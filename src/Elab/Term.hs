@@ -50,9 +50,9 @@ instantiate image (Scope b) = substIn (\ i v -> case v of
   Bound j -> if i == j then image else Head (Bound j)
   Free  n -> free n) b
 
-substIn :: (Int -> Head a -> Term a)
+substIn :: (Int -> Head a -> Term b)
         -> Term a
-        -> Term a
+        -> Term b
 substIn var = go 0
   where go i (Head h)         = var i h
         go i (Lam (Scope b))  = Lam (Scope (go (succ i) b))
