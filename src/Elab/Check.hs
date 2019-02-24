@@ -28,5 +28,8 @@ instance MonadFail (Elab v) where
 bound :: Int -> Elab v (Type v)
 bound i = Elab (\ ctx _ -> Right (ctx !! i))
 
+free :: (Ord v, Show v) => v -> Elab v (Type v)
+free v = Elab (\ _ sig -> maybe (Left ("Variable not in scope: " <> show v)) Right (Map.lookup v sig))
+
 type' :: Elab v (Type v)
 type' = Elab (const (const (Right Type)))
