@@ -2,6 +2,7 @@
 module Elab.Term where
 
 import Control.Monad (ap)
+import Elab.Name
 import Prelude hiding (pi)
 
 data Term a
@@ -13,11 +14,6 @@ data Term a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 newtype Scope a = Scope (Term a)
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
-
-data Head a
-  = Free a
-  | Bound Int
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 lam :: Eq a => a -> Term a -> Term a
