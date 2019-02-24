@@ -4,7 +4,7 @@ module Elab.Term where
 data Term a
   = Head (Head a)
   | Lam (Scope a)
-  | App (Term a) (Term a)
+  | Term a :$ Term a
   | Type
   | Pi (Term a) (Scope a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
