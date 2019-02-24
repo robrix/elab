@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveTraversable, LambdaCase #-}
 module Elab.Term where
 
+import Control.Monad (ap)
 import Prelude hiding (pi)
 
 data Term a
@@ -59,3 +60,13 @@ substIn var = go 0
         go i (f :$ a)         = go i f :$ go i a
         go _ Type             = Type
         go i (Pi t (Scope b)) = Pi (go i t) (Scope (go (succ i) b))
+
+
+instance Applicative Term where
+  pure = Head . Free
+  (<*>) = ap
+
+instance Monad Term where
+  a >>= f = substIn (const (\case
+    Free a' -> f a'
+    Bound i -> Head (Bound i))) a
