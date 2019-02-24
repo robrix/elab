@@ -4,7 +4,7 @@ module Elab.Check where
 import Control.Monad (ap)
 import Control.Monad.Fail
 import qualified Data.Map as Map
-import Elab.Term
+import Elab.Term (Term(..))
 import Prelude hiding (fail)
 
 type Type = Term
