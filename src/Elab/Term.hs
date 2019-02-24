@@ -20,9 +20,6 @@ data Head a
   | Bound Int
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-free :: a -> Term a
-free = Head . Free
-
 lam :: Eq a => a -> Term a -> Term a
 lam n b = Lam (bind n b)
 
@@ -49,7 +46,7 @@ bind name = Scope . substIn (\ i v -> Head $ case v of
 instantiate :: Term a -> Scope a -> Term a
 instantiate image (Scope b) = substIn (\ i v -> case v of
   Bound j -> if i == j then image else Head (Bound j)
-  Free  n -> free n) b
+  Free  n -> pure n) b
 
 substIn :: (Int -> Head a -> Term b)
         -> Term a
