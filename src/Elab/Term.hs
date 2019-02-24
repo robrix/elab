@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveTraversable, LambdaCase #-}
 module Elab.Term where
 
+import Prelude hiding (pi)
+
 data Term a
   = Head (Head a)
   | Lam (Scope a)
@@ -16,3 +18,44 @@ data Head a
   = Free a
   | Bound Int
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+free :: a -> Term a
+free = Head . Free
+
+lam :: Eq a => a -> Term a -> Term a
+lam n b = Lam (bind n b)
+
+lams :: (Eq a, Foldable t) => t a -> Term a -> Term a
+lams names body = foldr lam body names
+
+pi :: Eq a => a -> Term a -> Term a -> Term a
+pi n t b = Pi t (bind n b)
+
+pis :: (Eq a, Foldable t) => t (Typing a) -> Term a -> Term a
+pis names body = foldr (\ (n ::: t) -> pi n t) body names
+
+data Typing a = a ::: Term a
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+
+-- | Bind occurrences of a 'Name' in a 'Term' term, producing a 'Scope' in which the 'Name' is bound.
+bind :: Eq a => a -> Term a -> Scope a
+bind name = Scope . substIn (\ i v -> Head $ case v of
+  Bound j -> Bound j
+  Free  n -> if name == n then Bound i else Free n)
+
+-- | Substitute a 'Term' term for the free variable in a given 'Scope', producing a closed 'Term' term.
+instantiate :: Term a -> Scope a -> Term a
+instantiate image (Scope b) = substIn (\ i v -> case v of
+  Bound j -> if i == j then image else Head (Bound j)
+  Free  n -> free n) b
+
+substIn :: (Int -> Head a -> Term a)
+        -> Term a
+        -> Term a
+substIn var = go 0
+  where go i (Head h)         = var i h
+        go i (Lam (Scope b))  = Lam (Scope (go (succ i) b))
+        go i (f :$ a)         = go i f :$ go i a
+        go _ Type             = Type
+        go i (Pi t (Scope b)) = Pi (go i t) (Scope (go (succ i) b))
