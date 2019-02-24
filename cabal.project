@@ -1,0 +1,5 @@
+packages: elab.cabal
+optional-packages: vendor/*/*.cabal
+jobs: $ncpus
+package elab
+  ghc-options: -Werror
