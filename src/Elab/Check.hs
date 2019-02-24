@@ -22,3 +22,7 @@ instance Monad (Elab v) where
 
 instance MonadFail (Elab v) where
   fail s = Elab (const (Left s))
+
+
+bound :: Int -> Elab v (Type v)
+bound i = Elab (\ ctx -> Right (ctx !! i))
