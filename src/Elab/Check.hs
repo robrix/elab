@@ -17,6 +17,9 @@ type Signature v = Map.Map v (Type v)
 newtype Check v a = Check { runCheck :: ReaderC (Context v) (ReaderC (Signature v) (ReaderC Gensym (FreshC (FailC VoidC)))) a }
   deriving (Applicative, Functor, Monad, MonadFail)
 
+newtype Infer v a = Infer { runInfer :: ReaderC (Context v) (ReaderC (Signature v) (ReaderC Gensym (FreshC (FailC VoidC)))) a }
+  deriving (Applicative, Functor, Monad, MonadFail)
+
 bound :: Int -> Check v (Type v)
 bound i = Check $ do
   ctx <- ask
