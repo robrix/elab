@@ -27,9 +27,9 @@ free v = Elab $ do
   sig <- ask
   maybe (fail ("Variable not in scope: " <> show v)) pure (Map.lookup v sig)
 
-lam :: Type Gensym -> (Gensym -> Elab Gensym (Type Gensym)) -> Elab Gensym (Type Gensym)
+lam :: Type Name -> (Name -> Elab Name (Type Name)) -> Elab Name (Type Name)
 lam ty body = Elab $ do
-  x <- gensym ""
+  x <- Gensym <$> gensym ""
   Term.pi (x ::: ty) <$> runElab (body x)
 
 type' :: Elab v (Type v)
