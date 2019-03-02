@@ -31,6 +31,8 @@ pis names body = foldr pi body names
 data Typing a = a ::: Term a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
+infix 6 :::
+
 
 -- | Bind occurrences of a 'Name' in a 'Term' term, producing a 'Scope' in which the 'Name' is bound.
 bind :: Eq a => a -> Term a -> Scope a
