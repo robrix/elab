@@ -10,3 +10,7 @@ instance Semigroup (Stack a) where
   as  <> Nil       = as
   Nil <> bs        = bs
   as  <> (bs :> b) = (as <> bs) :> b
+
+instance Monoid (Stack a) where
+  mempty = Nil
+  mappend = (<>)
