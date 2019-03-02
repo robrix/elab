@@ -18,6 +18,7 @@ extra-source-files:  CHANGELOG.md
 library
   exposed-modules:     Elab.Check
                      , Elab.Name
+                     , Elab.Stack
                      , Elab.Term
                      , Elab.Type
   -- other-modules:
