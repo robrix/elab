@@ -14,7 +14,7 @@ type Type = Term
 type Context v = [Type v]
 type Signature v = Map.Map v (Type v)
 
-newtype Check v a = Check { runCheck :: ReaderC (Context v) (ReaderC (Signature v) (ReaderC Gensym (FreshC (FailC VoidC)))) a }
+newtype Check v a = Check { runCheck :: ReaderC (Type v) (ReaderC (Context v) (ReaderC (Signature v) (ReaderC Gensym (FreshC (FailC VoidC))))) a }
   deriving (Applicative, Functor, Monad, MonadFail)
 
 newtype Infer v a = Infer { runInfer :: ReaderC (Context v) (ReaderC (Signature v) (ReaderC Gensym (FreshC (FailC VoidC)))) a }
