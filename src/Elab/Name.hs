@@ -12,7 +12,7 @@ data Head a
 
 
 data Name
-  = User String
+  = Global String
   | Gensym Gensym
   deriving (Eq, Ord, Show)
 
