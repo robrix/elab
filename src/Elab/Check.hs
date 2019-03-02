@@ -20,13 +20,13 @@ newtype Check v a = Check { runCheck :: ReaderC (Context v) (ReaderC (Signature 
 newtype Infer v a = Infer { runInfer :: ReaderC (Context v) (ReaderC (Signature v) (ReaderC Gensym (FreshC (FailC VoidC)))) a }
   deriving (Applicative, Functor, Monad, MonadFail)
 
-bound :: Int -> Check v (Type v)
-bound i = Check $ do
+bound :: Int -> Infer v (Type v)
+bound i = Infer $ do
   ctx <- ask
   pure (ctx !! i)
 
-free :: (Ord v, Show v) => v -> Check v (Type v)
-free v = Check $ do
+free :: (Ord v, Show v) => v -> Infer v (Type v)
+free v = Infer $ do
   sig <- ask
   maybe (fail ("Variable not in scope: " <> show v)) pure (Map.lookup v sig)
 
