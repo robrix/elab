@@ -11,6 +11,12 @@ data Head a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 
+data Name
+  = User String
+  | Gensym Gensym
+  deriving (Eq, Ord, Show)
+
+
 data Gensym
   = Root String
   | Gensym :/ (String, Int)
