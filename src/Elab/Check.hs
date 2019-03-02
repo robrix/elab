@@ -11,8 +11,9 @@ import qualified Elab.Term as Term
 import Prelude hiding (fail)
 
 type Type = Term
+type Context v = [Type v]
 
-newtype Elab v a = Elab { runElab :: ReaderC [Type v] (ReaderC (Map.Map v (Type v)) (ReaderC Gensym (FreshC (FailC VoidC)))) a }
+newtype Elab v a = Elab { runElab :: ReaderC (Context v) (ReaderC (Map.Map v (Type v)) (ReaderC Gensym (FreshC (FailC VoidC)))) a }
   deriving (Applicative, Functor, Monad, MonadFail)
 
 bound :: Int -> Elab v (Type v)
