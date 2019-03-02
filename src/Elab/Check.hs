@@ -8,46 +8,45 @@ import Control.Monad (unless)
 import Control.Monad.Trans.Class
 import qualified Data.Map as Map
 import Elab.Name
-import Elab.Term (Term(..), Typing(..))
-import qualified Elab.Term as Term
+import Elab.Type (Type(..), Typing(..))
+import qualified Elab.Type as Type
 import Prelude hiding (fail)
 
-type Type = Term Name
-type Context = [Type]
-type Signature = Map.Map Name Type
+type Context = [Type Name]
+type Signature = Map.Map Name (Type Name)
 
-newtype Check a = Check { runCheck :: ReaderC Type (ReaderC Signature (ReaderC Gensym (FreshC (FailC VoidC)))) a }
+newtype Check a = Check { runCheck :: ReaderC (Type Name) (ReaderC Signature (ReaderC Gensym (FreshC (FailC VoidC)))) a }
   deriving (Applicative, Functor, Monad, MonadFail)
 
 newtype Infer a = Infer { runInfer :: ReaderC Signature (ReaderC Gensym (FreshC (FailC VoidC))) a }
   deriving (Applicative, Functor, Monad, MonadFail)
 
-free :: Name -> Infer Type
+free :: Name -> Infer (Type Name)
 free v = Infer $ do
   sig <- ask
   maybe (fail ("Variable not in scope: " <> show v)) pure (Map.lookup v sig)
 
-lam :: Type -> (Name -> Check Type) -> Check Type
+lam :: Type Name -> (Name -> Check (Type Name)) -> Check (Type Name)
 lam ty body = do
   x <- Gensym <$> Check (gensym "")
-  Term.pi (x ::: ty) <$> body x
+  Type.pi (x ::: ty) <$> body x
 
-type' :: Infer Type
+type' :: Infer (Type Name)
 type' = pure Type
 
-($$) :: Infer Type -> Check Type -> Infer Type
+($$) :: Infer (Type Name) -> Check (Type Name) -> Infer (Type Name)
 f $$ a = do
   f' <- f
   case f' of
     Pi t b -> do
       a' <- ascribe t a
-      pure (Term.instantiate a' b)
+      pure (Type.instantiate a' b)
     _ -> fail ("expected function type, got " <> show f')
 
-ascribe :: Type -> Check Type -> Infer Type
+ascribe :: Type Name -> Check (Type Name) -> Infer (Type Name)
 ascribe ty = Infer . runReader ty . runCheck
 
-switch :: Infer Type -> Check Type
+switch :: Infer (Type Name) -> Check (Type Name)
 switch m = Check $ do
   expected <- ask
   actual <- lift (runInfer m)
