@@ -14,6 +14,7 @@ data Head a
 data Gensym
   = Root String
   | Gensym :/ (String, Int)
+  deriving (Eq, Ord, Show)
 
 infixl 6 :/
 
