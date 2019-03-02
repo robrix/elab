@@ -22,5 +22,5 @@ root // s = root :/ (s, 0)
 
 infixl 6 //
 
-gensym :: (Applicative m, Carrier sig m, Member Fresh sig, Member (Reader Gensym) sig) => String -> m Gensym
+gensym :: (Carrier sig m, Member Fresh sig, Member (Reader Gensym) sig) => String -> m Gensym
 gensym s = (:/) <$> ask <*> ((,) s <$> fresh)
