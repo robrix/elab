@@ -36,11 +36,11 @@ type' :: Infer Type
 type' = pure Type
 
 ($$) :: Infer Type -> Check Type -> Infer Type
-f $$ a = Infer $ do
-  f' <- runInfer f
+f $$ a = do
+  f' <- f
   case f' of
     Pi t b -> do
-      a' <- runInfer (ascribe t a)
+      a' <- ascribe t a
       pure (Term.instantiate a' b)
     _ -> fail ("expected function type, got " <> show f')
 
