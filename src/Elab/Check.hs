@@ -20,11 +20,6 @@ newtype Check a = Check { runCheck :: ReaderC Type (ReaderC Context (ReaderC Sig
 newtype Infer a = Infer { runInfer :: ReaderC Context (ReaderC Signature (ReaderC Gensym (FreshC (FailC VoidC)))) a }
   deriving (Applicative, Functor, Monad, MonadFail)
 
-bound :: Int -> Infer Type
-bound i = Infer $ do
-  ctx <- ask
-  pure (ctx !! i)
-
 free :: Name -> Infer Type
 free v = Infer $ do
   sig <- ask
