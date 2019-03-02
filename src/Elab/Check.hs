@@ -37,3 +37,6 @@ lam ty body = do
 
 type' :: Infer Type
 type' = pure Type
+
+ascribe :: Type -> Check Type -> Infer Type
+ascribe ty = Infer . runReader ty . runCheck
