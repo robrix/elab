@@ -22,11 +22,11 @@ lam n b = Lam (bind n b)
 lams :: (Eq a, Foldable t) => t a -> Term a -> Term a
 lams names body = foldr lam body names
 
-pi :: Eq a => a -> Term a -> Term a -> Term a
-pi n t b = Pi t (bind n b)
+pi :: Eq a => Typing a -> Term a -> Term a
+pi (n ::: t) b = Pi t (bind n b)
 
 pis :: (Eq a, Foldable t) => t (Typing a) -> Term a -> Term a
-pis names body = foldr (\ (n ::: t) -> pi n t) body names
+pis names body = foldr pi body names
 
 data Typing a = a ::: Term a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
