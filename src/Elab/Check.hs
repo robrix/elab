@@ -5,12 +5,13 @@ import Control.Effect
 import Control.Effect.Fail
 import Control.Effect.Reader
 import qualified Data.Map as Map
+import Elab.Name
 import Elab.Term (Term(..))
 import Prelude hiding (fail)
 
 type Type = Term
 
-newtype Elab v a = Elab { runElab :: ReaderC [Type v] (ReaderC (Map.Map v (Type v)) (FailC VoidC)) a }
+newtype Elab v a = Elab { runElab :: ReaderC [Type v] (ReaderC (Map.Map v (Type v)) (ReaderC Gensym (FreshC (FailC VoidC)))) a }
   deriving (Applicative, Functor, Monad, MonadFail)
 
 bound :: Int -> Elab v (Type v)
