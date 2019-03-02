@@ -35,6 +35,15 @@ lam ty body = do
 type' :: Infer Type
 type' = pure Type
 
+($$) :: Infer Type -> Check Type -> Infer Type
+f $$ a = Infer $ do
+  f' <- runInfer f
+  case f' of
+    Pi t b -> do
+      a' <- runInfer (ascribe t a)
+      pure (Term.instantiate a' b)
+    _ -> fail ("expected function type, got " <> show f')
+
 ascribe :: Type -> Check Type -> Infer Type
 ascribe ty = Infer . runReader ty . runCheck
 
