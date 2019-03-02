@@ -35,5 +35,5 @@ lam ty body = Check $ do
   x <- Gensym <$> gensym ""
   Term.pi (x ::: ty) <$> runCheck (body x)
 
-type' :: Check v (Type v)
+type' :: Infer v (Type v)
 type' = pure Type
