@@ -5,10 +5,11 @@ import Control.Monad (ap)
 import Data.Foldable (foldl')
 import Elab.Name
 import Elab.Stack
+import Prelude hiding (pi)
 
 data Type a
   = Type
-  | Lam (Type a) (Scope a)
+  | Lam          (Scope a)
   | Pi  (Type a) (Scope a)
   | Head a :$ Stack (Type a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
@@ -22,8 +23,20 @@ data Typing a = a ::: Type a
 
 infix 6 :::
 
+lam :: Eq a => a -> Type a -> Type a
+lam n b = Lam (bind n b)
+
+lams :: (Eq a, Foldable t) => t a -> Type a -> Type a
+lams names body = foldr lam body names
+
+pi :: Eq a => Typing a -> Type a -> Type a
+pi (n ::: t) b = Pi t (bind n b)
+
+pis :: (Eq a, Foldable t) => t (Typing a) -> Type a -> Type a
+pis names body = foldr pi body names
+
 ($$) :: Type a -> Type a -> Type a
-Lam _ b $$ v = instantiate v b
+Lam   b $$ v = instantiate v b
 Pi  _ b $$ v = instantiate v b
 n :$ vs $$ v = n :$ (vs :> v)
 Type    $$ _ = error "illegal application of Type"
@@ -48,10 +61,10 @@ substIn :: (Int -> Head a -> Type b)
         -> Type a
         -> Type b
 substIn var = go 0
-  where go i (Lam t (Scope b)) = Lam (go i t) (Scope (go (succ i) b))
-        go i (f :$ a)          = var i f $$* fmap (go i) a
-        go _ Type              = Type
-        go i (Pi t (Scope b))  = Pi (go i t) (Scope (go (succ i) b))
+  where go i (Lam (Scope b))  = Lam (Scope (go (succ i) b))
+        go i (f :$ a)         = var i f $$* fmap (go i) a
+        go _ Type             = Type
+        go i (Pi t (Scope b)) = Pi (go i t) (Scope (go (succ i) b))
 
 
 instance Applicative Type where
