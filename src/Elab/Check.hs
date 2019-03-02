@@ -31,9 +31,9 @@ free v = Infer $ do
   maybe (fail ("Variable not in scope: " <> show v)) pure (Map.lookup v sig)
 
 lam :: Type -> (Name -> Check Type) -> Check Type
-lam ty body = Check $ do
-  x <- Gensym <$> gensym ""
-  Term.pi (x ::: ty) <$> runCheck (body x)
+lam ty body = do
+  x <- Gensym <$> Check (gensym "")
+  Term.pi (x ::: ty) <$> body x
 
 type' :: Infer Type
 type' = pure Type
