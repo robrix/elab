@@ -4,6 +4,8 @@ module Elab.Check where
 import Control.Effect
 import Control.Effect.Fail
 import Control.Effect.Reader
+import Control.Monad (unless)
+import Control.Monad.Trans.Class
 import qualified Data.Map as Map
 import Elab.Name
 import Elab.Term (Term(..), Typing(..))
@@ -35,6 +37,14 @@ type' = pure Type
 
 ascribe :: Type -> Check Type -> Infer Type
 ascribe ty = Infer . runReader ty . runCheck
+
+switch :: Infer Type -> Check Type
+switch m = Check $ do
+  expected <- ask
+  actual <- lift (runInfer m)
+  unless (expected == actual) $
+    fail ("expected: " <> show expected <> "\n  actual: " <> show actual)
+  pure actual
 
 (|-) :: (Carrier sig m, Member (Reader Signature) sig) => Typing Name -> m a -> m a
 a ::: ty |- m = local (Map.insert a ty) m
