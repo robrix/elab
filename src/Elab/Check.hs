@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveFunctor, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveFunctor, FlexibleContexts, GeneralizedNewtypeDeriving #-}
 module Elab.Check where
 
 import Control.Effect
@@ -35,3 +35,8 @@ type' = pure Type
 
 ascribe :: Type -> Check Type -> Infer Type
 ascribe ty = Infer . runReader ty . runCheck
+
+(|-) :: (Carrier sig m, Member (Reader Signature) sig) => Typing Name -> m a -> m a
+a ::: ty |- m = local (Map.insert a ty) m
+
+infix 5 |-
