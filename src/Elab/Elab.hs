@@ -100,6 +100,18 @@ assume' v = do
   Elab (tell (Set.singleton (ctx :|- pure v ::: _A :===: a ::: ty)))
   pure (a ::: ty)
 
+intro' :: (Name -> Elab (Value ::: Type Name)) -> Elab (Value ::: Type Name)
+intro' body = do
+  a ::: ty <- goal' >>= exists
+
+  _A ::: _ <- exists Type
+  x <- Elab (Gensym <$> gensym "intro")
+  _B ::: _ <- x ::: _A ||- exists Type
+  u ::: _ <- x ::: _A ||- goalIs' _B (body x)
+  ctx <- Elab ask
+  Elab (tell (Set.singleton (ctx :|- Type.lam x u ::: Type.pi (x ::: _A) _B :===: a ::: ty)))
+  pure (a ::: ty)
+
 
 exists :: Type Name -> Elab (Value ::: Type Name)
 exists ty = Elab $ do
