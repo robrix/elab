@@ -62,6 +62,9 @@ switch m = do
 goal :: Check (Type Name)
 goal = Check ask
 
+goalIs :: Type Name -> Check a -> Check a
+goalIs ty = Check . local (const ty) . runCheck
+
 
 (|-) :: (Carrier sig m, Member (Reader Signature) sig) => Typing Name -> m a -> m a
 a ::: ty |- m = local (Map.insert a ty) m
