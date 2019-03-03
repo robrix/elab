@@ -13,7 +13,7 @@ check t          = switch (infer t)
 
 infer :: Term Name -> Infer (Typed Name Value)
 infer (Head (Bound i)) = fail ("Unexpected bound variable " ++ show i)
-infer (Head (Free v))  = assumption v
+infer (Head (Free v))  = assume v
 infer (f :$ a)         = infer f $$ check a
 infer Type             = type'
 infer (Pi t body)      = pi (check t) (\ name -> check (instantiate (pure name) body))
