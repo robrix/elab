@@ -14,13 +14,13 @@ import Elab.Type (Type(..))
 import qualified Elab.Type as Type
 import Prelude hiding (fail)
 
-type Context = Map.Map Name (Type Name)
+type Context = Map.Map Name
 type Value = Type
 
-newtype Check a = Check { runCheck :: ReaderC (Type Name) (ReaderC Context (ReaderC Gensym (FreshC (FailC VoidC)))) a }
+newtype Check a = Check { runCheck :: ReaderC (Type Name) (ReaderC (Context (Type Name)) (ReaderC Gensym (FreshC (FailC VoidC)))) a }
   deriving (Applicative, Functor, Monad, MonadFail)
 
-newtype Infer a = Infer { runInfer :: ReaderC Context (ReaderC Gensym (FreshC (FailC VoidC))) a }
+newtype Infer a = Infer { runInfer :: ReaderC (Context (Type Name)) (ReaderC Gensym (FreshC (FailC VoidC))) a }
   deriving (Applicative, Functor, Monad, MonadFail)
 
 assume :: Name -> Infer (Value Name ::: Type Name)
@@ -73,64 +73,64 @@ goalIs :: Type Name -> Check a -> Check a
 goalIs ty = Check . local (const ty) . runCheck
 
 
-(|-) :: (Carrier sig m, Member (Reader Context) sig) => Name ::: Type Name -> m a -> m a
+(|-) :: (Carrier sig m, Member (Reader (Context (Type Name))) sig) => Name ::: Type Name -> m a -> m a
 a ::: ty |- m = local (Map.insert a ty) m
 
 infix 5 |-
 
-lookupVar :: (Carrier sig m, Member (Reader Context) sig, MonadFail m) => Name -> m (Type Name)
+lookupVar :: (Carrier sig m, Member (Reader (Context ty)) sig, MonadFail m) => Name -> m ty
 lookupVar v = asks (Map.lookup v) >>= maybe (fail ("Variable not in scope: " <> show v)) pure
 
 
-runInfer' :: Context -> Infer a -> Either String a
+runInfer' :: Context (Type Name) -> Infer a -> Either String a
 runInfer' sig = run . runFail . runFresh . runReader (Root "root") . runReader sig  . runInfer
 
-runCheck' :: Context -> Type Name -> Check a -> Either String a
+runCheck' :: Context (Type Name) -> Type Name -> Check a -> Either String a
 runCheck' sig ty = runInfer' sig . ascribe ty
 
 
-newtype Elab a = Elab { runElab :: ReaderC (Type Name) (ReaderC Context (ReaderC Gensym (FreshC (WriterC (Set.Set (Contextual (Equation (Value Name ::: Type Name)))) (FailC VoidC))))) a }
+newtype Elab a = Elab { runElab :: ReaderC (Type Meta) (ReaderC (Context (Type Meta)) (ReaderC Gensym (FreshC (WriterC (Set.Set (Contextual (Equation (Value Meta ::: Type Meta)))) (FailC VoidC))))) a }
   deriving (Applicative, Functor, Monad, MonadFail)
 
-assume' :: Name -> Elab (Value Name ::: Type Name)
+assume' :: Name -> Elab (Value Meta ::: Type Meta)
 assume' v = do
   a ::: ty <- goal' >>= exists
   _A <- Elab (lookupVar v)
-  unify (pure v ::: _A :===: a ::: ty)
+  unify (pure (Name v) ::: _A :===: a ::: ty)
   pure (a ::: ty)
 
-intro' :: (Name -> Elab (Value Name ::: Type Name)) -> Elab (Value Name ::: Type Name)
+intro' :: (Name -> Elab (Value Meta ::: Type Meta)) -> Elab (Value Meta ::: Type Meta)
 intro' body = do
   a ::: ty <- goal' >>= exists
   _A ::: _ <- exists Type
   x <- freshName "intro"
   _B ::: _ <- x ::: _A ||- exists Type
   u ::: _ <- x ::: _A ||- goalIs' _B (body x)
-  unify (Type.lam x u ::: Type.pi (x ::: _A) _B :===: a ::: ty)
+  unify (Type.lam (Name x) u ::: Type.pi (Name x ::: _A) _B :===: a ::: ty)
   pure (a ::: ty)
 
-type'' :: Elab (Value Name ::: Type Name)
+type'' :: Elab (Value Meta ::: Type Meta)
 type'' = do
   a ::: ty <- goal' >>= exists
   unify (Type ::: Type :===: a ::: ty)
   pure (a ::: ty)
 
-pi' :: Elab (Value Name ::: Type Name) -> (Name -> Elab (Value Name ::: Type Name)) -> Elab (Value Name ::: Type Name)
+pi' :: Elab (Value Meta ::: Type Meta) -> (Name -> Elab (Value Meta ::: Type Meta)) -> Elab (Value Meta ::: Type Meta)
 pi' t body = do
   a ::: ty <- goal' >>= exists
   t' ::: _ <- goalIs' Type t
   x <- freshName "pi"
   b' ::: _ <- x ::: t' ||- goalIs' Type (body x)
-  unify (Type.pi (x ::: t') b' ::: Type :===: a ::: ty)
+  unify (Type.pi (Name x ::: t') b' ::: Type :===: a ::: ty)
   pure (a ::: ty)
 
-($$$) :: Elab (Value Name ::: Type Name) -> Elab (Value Name ::: Type Name) -> Elab (Value Name ::: Type Name)
+($$$) :: Elab (Value Meta ::: Type Meta) -> Elab (Value Meta ::: Type Meta) -> Elab (Value Meta ::: Type Meta)
 f $$$ a = do
   res <- goal' >>= exists
   _A ::: _ <- exists Type
   _B ::: _ <- exists Type
   x <- freshName "$$"
-  f' ::: _ <- goalIs' (Type.pi (x ::: _A) _B) f
+  f' ::: _ <- goalIs' (Type.pi (Name x ::: _A) _B) f
   a' ::: _ <- goalIs' _A a
   unify (f' Type.$$ a' ::: _B :===: res)
   pure res
@@ -139,28 +139,28 @@ f $$$ a = do
 freshName :: String -> Elab Name
 freshName s = Local <$> Elab (gensym s)
 
-context :: Elab Context
+context :: Elab (Context (Type Meta))
 context = Elab ask
 
-exists :: Type Name -> Elab (Value Name ::: Type Name)
+exists :: Type Meta -> Elab (Value Meta ::: Type Meta)
 exists ty = do
   ctx <- context
   -- FIXME: add meta names
-  n <- freshName "meta"
-  pure (pure n Type.$$* map pure (Map.keys (ctx :: Context)) ::: ty)
+  n <- Elab (Meta <$> gensym "meta")
+  pure (pure n Type.$$* map (pure . Name) (Map.keys (ctx :: Context (Type Meta))) ::: ty)
 
-goal' :: Elab (Type Name)
+goal' :: Elab (Type Meta)
 goal' = Elab ask
 
-goalIs' :: Type Name -> Elab a -> Elab a
+goalIs' :: Type Meta -> Elab a -> Elab a
 goalIs' ty = Elab . local (const ty) . runElab
 
-(||-) :: Name ::: Type Name -> Elab a -> Elab a
+(||-) :: Name ::: Type Meta -> Elab a -> Elab a
 a ::: ty ||- m = Elab (local (Map.insert a ty) (runElab m))
 
 infix 5 ||-
 
-unify :: Equation (Value Name ::: Type Name) -> Elab ()
+unify :: Equation (Value Meta ::: Type Meta) -> Elab ()
 unify constraint = context >>= Elab . tell . Set.singleton . (:|- constraint)
 
 
@@ -170,7 +170,7 @@ data Equation a
 
 infix 3 :===:
 
-data Contextual a = Context :|- a
+data Contextual a = Context (Type Meta) :|- a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 infixr 1 :|-
