@@ -31,7 +31,7 @@ introduce body = do
   expected <- goal
   case expected of
     Pi t b -> Check $ do
-      x <- Gensym <$> gensym "lam"
+      x <- Gensym <$> gensym "introduce"
       b' <- x ::: t |- runCheck (goalIs (Type.instantiate (pure x) b) (body x))
       pure (Type.pi (x ::: t) b')
     _ -> fail ("expected function type, got " <> show expected)
