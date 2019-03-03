@@ -160,7 +160,7 @@ a ::: ty ||- Elab m = Elab (local (Map.insert a ty) m)
 infix 5 ||-
 
 unify :: Equation (Value Meta ::: Type Meta) -> Elab ()
-unify constraint = context >>= Elab . tell . Set.singleton . (:|- constraint)
+unify constraint = context >>= Elab . tell . Set.singleton . (:|-: constraint)
 
 
 data Equation a
@@ -169,10 +169,10 @@ data Equation a
 
 infix 3 :===:
 
-data Contextual a = Context (Type Meta) :|- a
+data Contextual a = Context (Type Meta) :|-: a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-infixr 1 :|-
+infixr 1 :|-:
 
 
 runElab :: Maybe (Type Meta) -> Elab (Value Meta ::: Type Meta) -> Either String (Value Name ::: Type Name)
@@ -181,7 +181,7 @@ runElab ty (Elab m) = run . runFail $ do
   evalState (Seq.empty :: Seq.Seq (Contextual (Equation (Value Meta ::: Type Meta)))) $ do
     stuck <- fmap fold . execState (Map.empty :: Map.Map Gensym (Set.Set (Contextual (Equation (Value Meta ::: Type Meta))))) $ do
       modify (flip (foldl' (Seq.|>)) constraints)
-      pure ()
+      step
     unless (null stuck) $ fail ("stuck metavariables: " ++ show stuck)
     let subst = Map.empty
     val' <- substitute subst val
