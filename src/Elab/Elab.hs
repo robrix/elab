@@ -114,6 +114,11 @@ goal' = Elab ask
 goalIs' :: Type Name -> Elab a -> Elab a
 goalIs' ty = Elab . local (const ty) . runElab
 
+(||-) :: Name ::: Type Name -> Elab a -> Elab a
+a ::: ty ||- m = Elab (local (Map.insert a ty) (runElab m))
+
+infix 5 ||-
+
 
 data Equation a
   = a :===: a
