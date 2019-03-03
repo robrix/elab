@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveFunctor, FlexibleContexts, GeneralizedNewtypeDeriving, TypeOperators #-}
+{-# LANGUAGE DeriveTraversable, FlexibleContexts, GeneralizedNewtypeDeriving, TypeOperators #-}
 module Elab.Elab where
 
 import Control.Effect
@@ -85,3 +85,10 @@ runInfer' sig = run . runFail . runFresh . runReader (Root "root") . runReader s
 
 runCheck' :: Context -> Type Name -> Check a -> Either String a
 runCheck' sig ty = runInfer' sig . ascribe ty
+
+
+data Equation a
+  = a :===: a
+  deriving (Eq, Ord, Show)
+
+infix 3 :===:
