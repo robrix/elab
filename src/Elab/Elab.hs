@@ -96,8 +96,7 @@ assume' :: Name -> Elab (Value ::: Type Name)
 assume' v = do
   a ::: ty <- goal' >>= exists
   _A <- Elab (lookupVar v)
-  ctx <- context
-  unify (ctx :|- pure v ::: _A :===: a ::: ty)
+  unify (pure v ::: _A :===: a ::: ty)
   pure (a ::: ty)
 
 intro' :: (Name -> Elab (Value ::: Type Name)) -> Elab (Value ::: Type Name)
@@ -107,15 +106,13 @@ intro' body = do
   x <- freshName "intro"
   _B ::: _ <- x ::: _A ||- exists Type
   u ::: _ <- x ::: _A ||- goalIs' _B (body x)
-  ctx <- context
-  unify (ctx :|- Type.lam x u ::: Type.pi (x ::: _A) _B :===: a ::: ty)
+  unify (Type.lam x u ::: Type.pi (x ::: _A) _B :===: a ::: ty)
   pure (a ::: ty)
 
 type'' :: Elab (Value ::: Type Name)
 type'' = do
   a ::: ty <- goal' >>= exists
-  ctx <- context
-  unify (ctx :|- Type ::: Type :===: a ::: ty)
+  unify (Type ::: Type :===: a ::: ty)
   pure (a ::: ty)
 
 
@@ -143,8 +140,8 @@ a ::: ty ||- m = Elab (local (Map.insert a ty) (runElab m))
 
 infix 5 ||-
 
-unify :: Contextual (Equation (Value ::: Type Name)) -> Elab ()
-unify = Elab . tell . Set.singleton
+unify :: Equation (Value ::: Type Name) -> Elab ()
+unify constraint = context >>= Elab . tell . Set.singleton . (:|- constraint)
 
 
 data Equation a
