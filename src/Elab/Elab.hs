@@ -103,7 +103,6 @@ assume' v = do
 intro' :: (Name -> Elab (Value ::: Type Name)) -> Elab (Value ::: Type Name)
 intro' body = do
   a ::: ty <- goal' >>= exists
-
   _A ::: _ <- exists Type
   x <- gensym' "intro"
   _B ::: _ <- x ::: _A ||- exists Type
