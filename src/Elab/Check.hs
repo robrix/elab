@@ -5,7 +5,6 @@ import Control.Effect
 import Control.Effect.Fail
 import Control.Effect.Reader
 import Control.Monad (unless)
-import Control.Monad.Trans.Class
 import qualified Data.Map as Map
 import Elab.Name
 import Elab.Type (Type(..), Typing(..))
@@ -48,9 +47,8 @@ ascribe :: Type Name -> Check (Type Name) -> Infer (Type Name)
 ascribe ty = Infer . runReader ty . runCheck
 
 switch :: Infer (Type Name) -> Check (Type Name)
-switch m = Check $ do
-  expected <- ask
-  actual <- lift (runInfer m)
+switch m = Check $ ReaderC $ \ expected -> do
+  actual <- runInfer m
   unless (expected == actual) $
     fail ("expected: " <> show expected <> "\n  actual: " <> show actual)
   pure actual
