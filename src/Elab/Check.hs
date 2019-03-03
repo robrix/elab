@@ -27,7 +27,7 @@ free v = Infer $ do
 
 lam :: Type Name -> (Name -> Check (Type Name)) -> Check (Type Name)
 lam ty body = Check $ do
-  x <- Gensym <$> gensym ""
+  x <- Gensym <$> gensym "lam"
   b' <- x ::: ty |- runCheck (body x)
   pure (Type.pi (x ::: ty) b')
 
