@@ -12,13 +12,13 @@ import Elab.Type (Type(..))
 import qualified Elab.Type as Type
 import Prelude hiding (fail)
 
-type Signature = Map.Map Name (Type Name)
+type Context = Map.Map Name (Type Name)
 type Value = Type Name
 
-newtype Check a = Check { runCheck :: ReaderC (Type Name) (ReaderC Signature (ReaderC Gensym (FreshC (FailC VoidC)))) a }
+newtype Check a = Check { runCheck :: ReaderC (Type Name) (ReaderC Context (ReaderC Gensym (FreshC (FailC VoidC)))) a }
   deriving (Applicative, Functor, Monad, MonadFail)
 
-newtype Infer a = Infer { runInfer :: ReaderC Signature (ReaderC Gensym (FreshC (FailC VoidC))) a }
+newtype Infer a = Infer { runInfer :: ReaderC Context (ReaderC Gensym (FreshC (FailC VoidC))) a }
   deriving (Applicative, Functor, Monad, MonadFail)
 
 assume :: Name -> Infer (Value ::: Type Name)
@@ -71,17 +71,17 @@ goalIs :: Type Name -> Check a -> Check a
 goalIs ty = Check . local (const ty) . runCheck
 
 
-(|-) :: (Carrier sig m, Member (Reader Signature) sig) => Name ::: Type Name -> m a -> m a
+(|-) :: (Carrier sig m, Member (Reader Context) sig) => Name ::: Type Name -> m a -> m a
 a ::: ty |- m = local (Map.insert a ty) m
 
 infix 5 |-
 
-lookupVar :: (Carrier sig m, Member (Reader Signature) sig, MonadFail m) => Name -> m (Type Name)
+lookupVar :: (Carrier sig m, Member (Reader Context) sig, MonadFail m) => Name -> m (Type Name)
 lookupVar v = asks (Map.lookup v) >>= maybe (fail ("Variable not in scope: " <> show v)) pure
 
 
-runInfer' :: Signature -> Infer a -> Either String a
+runInfer' :: Context -> Infer a -> Either String a
 runInfer' sig = run . runFail . runFresh . runReader (Root "root") . runReader sig  . runInfer
 
-runCheck' :: Signature -> Type Name -> Check a -> Either String a
+runCheck' :: Context -> Type Name -> Check a -> Either String a
 runCheck' sig ty = runInfer' sig . ascribe ty
