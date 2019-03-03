@@ -94,35 +94,35 @@ newtype Elab a = Elab { runElab :: ReaderC (Type Meta) (ReaderC (Context (Type M
 
 assume' :: Name -> Elab (Value Meta ::: Type Meta)
 assume' v = do
-  a ::: ty <- goal' >>= exists
+  res <- goal' >>= exists
   _A <- Elab (lookupVar v)
-  unify (pure (Name v) ::: _A :===: a ::: ty)
-  pure (a ::: ty)
+  unify (pure (Name v) ::: _A :===: res)
+  pure res
 
 intro' :: (Name -> Elab (Value Meta ::: Type Meta)) -> Elab (Value Meta ::: Type Meta)
 intro' body = do
-  a ::: ty <- goal' >>= exists
+  res <- goal' >>= exists
   _A ::: _ <- exists Type
   x <- freshName "intro"
   _B ::: _ <- x ::: _A ||- exists Type
   u ::: _ <- x ::: _A ||- goalIs' _B (body x)
-  unify (Type.lam (Name x) u ::: Type.pi (Name x ::: _A) _B :===: a ::: ty)
-  pure (a ::: ty)
+  unify (Type.lam (Name x) u ::: Type.pi (Name x ::: _A) _B :===: res)
+  pure res
 
 type'' :: Elab (Value Meta ::: Type Meta)
 type'' = do
-  a ::: ty <- goal' >>= exists
-  unify (Type ::: Type :===: a ::: ty)
-  pure (a ::: ty)
+  res <- goal' >>= exists
+  unify (Type ::: Type :===: res)
+  pure res
 
 pi' :: Elab (Value Meta ::: Type Meta) -> (Name -> Elab (Value Meta ::: Type Meta)) -> Elab (Value Meta ::: Type Meta)
 pi' t body = do
-  a ::: ty <- goal' >>= exists
+  res <- goal' >>= exists
   t' ::: _ <- goalIs' Type t
   x <- freshName "pi"
   b' ::: _ <- x ::: t' ||- goalIs' Type (body x)
-  unify (Type.pi (Name x ::: t') b' ::: Type :===: a ::: ty)
-  pure (a ::: ty)
+  unify (Type.pi (Name x ::: t') b' ::: Type :===: res)
+  pure res
 
 ($$$) :: Elab (Value Meta ::: Type Meta) -> Elab (Value Meta ::: Type Meta) -> Elab (Value Meta ::: Type Meta)
 f $$$ a = do
