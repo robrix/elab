@@ -43,7 +43,7 @@ f $$ a = do
       pure (Type.instantiate a' b)
     _ -> fail ("expected function type, got " <> show f')
 
-ascribe :: Type Name -> Check (Type Name) -> Infer (Type Name)
+ascribe :: Type Name -> Check a -> Infer a
 ascribe ty = Infer . runReader ty . runCheck
 
 switch :: Infer (Type Name) -> Check (Type Name)
