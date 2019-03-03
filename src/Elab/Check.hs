@@ -67,7 +67,7 @@ goalIs :: Type Name -> Check a -> Check a
 goalIs ty = Check . local (const ty) . runCheck
 
 
-(|-) :: (Carrier sig m, Member (Reader Signature) sig) => Typed Name -> m a -> m a
+(|-) :: (Carrier sig m, Member (Reader Signature) sig) => Typed Name Name -> m a -> m a
 a ::: ty |- m = local (Map.insert a ty) m
 
 infix 5 |-
