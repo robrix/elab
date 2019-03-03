@@ -96,7 +96,7 @@ assume' :: Name -> Elab (Value ::: Type Name)
 assume' v = do
   a ::: ty <- goal' >>= exists
   _A <- Elab (lookupVar v)
-  ctx <- Elab ask
+  ctx <- context
   unify (ctx :|- pure v ::: _A :===: a ::: ty)
   pure (a ::: ty)
 
@@ -107,7 +107,7 @@ intro' body = do
   x <- freshName "intro"
   _B ::: _ <- x ::: _A ||- exists Type
   u ::: _ <- x ::: _A ||- goalIs' _B (body x)
-  ctx <- Elab ask
+  ctx <- context
   unify (ctx :|- Type.lam x u ::: Type.pi (x ::: _A) _B :===: a ::: ty)
   pure (a ::: ty)
 
@@ -115,9 +115,12 @@ intro' body = do
 freshName :: String -> Elab Name
 freshName s = Gensym <$> Elab (gensym s)
 
+context :: Elab Context
+context = Elab ask
+
 exists :: Type Name -> Elab (Value ::: Type Name)
 exists ty = do
-  ctx <- Elab ask
+  ctx <- context
   -- FIXME: add meta names
   n <- freshName "_meta_"
   pure (pure n Type.$$* fmap pure (Map.keys (ctx :: Context)) ::: ty)
