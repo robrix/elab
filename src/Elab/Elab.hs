@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveFunctor, FlexibleContexts, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveFunctor, FlexibleContexts, GeneralizedNewtypeDeriving, TypeOperators #-}
 module Elab.Elab where
 
 import Control.Effect
@@ -8,7 +8,7 @@ import Control.Effect.Reader
 import Control.Monad (unless)
 import qualified Data.Map as Map
 import Elab.Name
-import Elab.Type (Type(..), Typed(..))
+import Elab.Type (Type(..), (:::)(..))
 import qualified Elab.Type as Type
 import Prelude hiding (fail)
 
@@ -22,12 +22,12 @@ newtype Check a = Check { runCheck :: ReaderC (Type Name) (ReaderC Signature (Re
 newtype Infer a = Infer { runInfer :: ReaderC Signature (ReaderC Gensym (FreshC (FailC VoidC))) a }
   deriving (Applicative, Functor, Monad, MonadFail)
 
-assume :: Name -> Infer (Typed Name Value)
+assume :: Name -> Infer (Value ::: Type Name)
 assume v = Infer $ do
   sig <- ask
   maybe (fail ("Variable not in scope: " <> show v)) (pure . (pure v :::)) (Map.lookup v sig)
 
-intro :: (Name -> Check (Typed Name Value)) -> Check (Typed Name Value)
+intro :: (Name -> Check (Value ::: Type Name)) -> Check (Value ::: Type Name)
 intro body = do
   expected <- goal
   case expected of
@@ -37,17 +37,17 @@ intro body = do
       pure (Type.lam x b' ::: Type.pi (x ::: t) bT)
     _ -> fail ("expected function type, got " <> show expected)
 
-type' :: Infer (Typed Name Value)
+type' :: Infer (Value ::: Type Name)
 type' = pure (Type ::: Type)
 
-pi :: Check (Typed Name Value) -> (Name -> Check (Typed Name Value)) -> Infer (Typed Name Value)
+pi :: Check (Value ::: Type Name) -> (Name -> Check (Value ::: Type Name)) -> Infer (Value ::: Type Name)
 pi t body = do
   t' ::: _ <- ascribe Type t
   x <- Infer (Gensym <$> gensym "pi")
   body' ::: _ <- Infer (x ::: t' |- runInfer (ascribe Type (body x)))
   pure (Type.pi (x ::: t') body' ::: Type)
 
-($$) :: Infer (Typed Name Value) -> Check (Typed Name Value) -> Infer (Typed Name Value)
+($$) :: Infer (Value ::: Type Name) -> Check (Value ::: Type Name) -> Infer (Value ::: Type Name)
 f $$ a = do
   f' ::: fT <- f
   case fT of
@@ -59,7 +59,7 @@ f $$ a = do
 ascribe :: Type Name -> Check a -> Infer a
 ascribe ty = Infer . runReader ty . runCheck
 
-switch :: Infer (Typed Name Value) -> Check (Typed Name Value)
+switch :: Infer (Value ::: Type Name) -> Check (Value ::: Type Name)
 switch m = do
   expected <- goal
   val ::: actual <- Check (ReaderC (const (runInfer m)))
@@ -74,7 +74,7 @@ goalIs :: Type Name -> Check a -> Check a
 goalIs ty = Check . local (const ty) . runCheck
 
 
-(|-) :: (Carrier sig m, Member (Reader Signature) sig) => Typed Name Name -> m a -> m a
+(|-) :: (Carrier sig m, Member (Reader Signature) sig) => Name ::: Type Name -> m a -> m a
 a ::: ty |- m = local (Map.insert a ty) m
 
 infix 5 |-

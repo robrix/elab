@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveTraversable, LambdaCase #-}
+{-# LANGUAGE DeriveTraversable, LambdaCase, TypeOperators #-}
 module Elab.Type where
 
 import Control.Monad (ap)
@@ -18,7 +18,7 @@ newtype Scope a = Scope (Type a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 
-data Typed v a = a ::: Type v
+data a ::: b = a ::: b
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 infix 6 :::
@@ -29,10 +29,10 @@ lam n b = Lam (bind n b)
 lams :: (Eq a, Foldable t) => t a -> Type a -> Type a
 lams names body = foldr lam body names
 
-pi :: Eq a => Typed a a -> Type a -> Type a
+pi :: Eq a => a ::: Type a -> Type a -> Type a
 pi (n ::: t) b = Pi t (bind n b)
 
-pis :: (Eq a, Foldable t) => t (Typed a a) -> Type a -> Type a
+pis :: (Eq a, Foldable t) => t (a ::: Type a) -> Type a -> Type a
 pis names body = foldr pi body names
 
 ($$) :: Type a -> Type a -> Type a

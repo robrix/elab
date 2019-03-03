@@ -1,17 +1,18 @@
+{-# LANGUAGE TypeOperators #-}
 module Elab.Check where
 
 import Control.Monad.Fail
 import Elab.Elab
 import Elab.Name
 import Elab.Term (Term(..), instantiate)
-import Elab.Type (Typed(..))
+import Elab.Type ((:::)(..), Type)
 import Prelude hiding (fail, pi)
 
-check :: Term Name -> Check (Typed Name Value)
+check :: Term Name -> Check (Value ::: Type Name)
 check (Lam body) = intro (\ name -> check (instantiate (pure name) body))
 check t          = switch (infer t)
 
-infer :: Term Name -> Infer (Typed Name Value)
+infer :: Term Name -> Infer (Value ::: Type Name)
 infer (Head (Bound i)) = fail ("Unexpected bound variable " ++ show i)
 infer (Head (Free v))  = assume v
 infer (f :$ a)         = infer f $$ check a
