@@ -3,6 +3,7 @@ module Elab.Check where
 
 import Control.Effect
 import Control.Effect.Fail
+import Control.Effect.Fresh
 import Control.Effect.Reader
 import Control.Monad (unless)
 import qualified Data.Map as Map
@@ -25,11 +26,15 @@ free v = Infer $ do
   sig <- ask
   maybe (fail ("Variable not in scope: " <> show v)) pure (Map.lookup v sig)
 
-lam :: Type Name -> (Name -> Check (Type Name)) -> Check (Type Name)
-lam ty body = Check $ do
-  x <- Gensym <$> gensym "lam"
-  b' <- x ::: ty |- runCheck (body x)
-  pure (Type.pi (x ::: ty) b')
+lam :: (Name -> Check (Type Name)) -> Check (Type Name)
+lam body = do
+  expected <- goal
+  case expected of
+    Pi t b -> Check $ do
+      x <- Gensym <$> gensym "lam"
+      b' <- x ::: t |- local (const (Type.instantiate (pure x) b)) (runCheck (body x))
+      pure (Type.pi (x ::: t) b')
+    _ -> fail ("expected function type, got " <> show expected)
 
 type' :: Infer (Type Name)
 type' = pure Type
