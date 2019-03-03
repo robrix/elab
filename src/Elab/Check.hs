@@ -26,8 +26,8 @@ assumption v = Infer $ do
   sig <- ask
   maybe (fail ("Variable not in scope: " <> show v)) pure (Map.lookup v sig)
 
-lam :: (Name -> Check (Type Name)) -> Check (Type Name)
-lam body = do
+introduce :: (Name -> Check (Type Name)) -> Check (Type Name)
+introduce body = do
   expected <- goal
   case expected of
     Pi t b -> Check $ do
