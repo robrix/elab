@@ -111,6 +111,13 @@ intro' body = do
   unify (ctx :|- Type.lam x u ::: Type.pi (x ::: _A) _B :===: a ::: ty)
   pure (a ::: ty)
 
+type'' :: Elab (Value ::: Type Name)
+type'' = do
+  a ::: ty <- goal' >>= exists
+  ctx <- context
+  unify (ctx :|- Type ::: Type :===: a ::: ty)
+  pure (a ::: ty)
+
 
 freshName :: String -> Elab Name
 freshName s = Gensym <$> Elab (gensym s)
