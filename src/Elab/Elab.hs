@@ -5,8 +5,10 @@ import Control.Effect
 import Control.Effect.Fail
 import Control.Effect.Fresh
 import Control.Effect.Reader
+import Control.Effect.Writer
 import Control.Monad (unless)
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import Elab.Name
 import Elab.Type (Type(..))
 import qualified Elab.Type as Type
@@ -87,6 +89,8 @@ runCheck' :: Context -> Type Name -> Check a -> Either String a
 runCheck' sig ty = runInfer' sig . ascribe ty
 
 
+newtype Elab a = Elab { runElab :: ReaderC Context (ReaderC Gensym (FreshC (WriterC (Set.Set (Contextual (Equation (Value ::: Type Name)))) (FailC VoidC)))) a }
+  deriving (Applicative, Functor, Monad, MonadFail)
 
 
 exists :: (Carrier sig m, Member Fresh sig, Member (Reader Context) sig, Member (Reader Gensym) sig) => Type Name -> m (Value ::: Type Name)
