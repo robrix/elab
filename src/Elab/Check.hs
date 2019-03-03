@@ -22,43 +22,43 @@ newtype Check a = Check { runCheck :: ReaderC (Type Name) (ReaderC Signature (Re
 newtype Infer a = Infer { runInfer :: ReaderC Signature (ReaderC Gensym (FreshC (FailC VoidC))) a }
   deriving (Applicative, Functor, Monad, MonadFail)
 
-assumption :: Name -> Infer (Type Name)
+assumption :: Name -> Infer (Typed Value Name)
 assumption v = Infer $ do
   sig <- ask
-  maybe (fail ("Variable not in scope: " <> show v)) pure (Map.lookup v sig)
+  maybe (fail ("Variable not in scope: " <> show v)) (pure . (pure v :::)) (Map.lookup v sig)
 
-introduce :: (Name -> Check (Type Name)) -> Check (Type Name)
+introduce :: (Name -> Check (Typed Value Name)) -> Check (Typed Value Name)
 introduce body = do
   expected <- goal
   case expected of
     Pi t b -> Check $ do
       x <- Gensym <$> gensym "introduce"
-      b' <- x ::: t |- runCheck (goalIs (Type.instantiate (pure x) b) (body x))
-      pure (Type.pi (x ::: t) b')
+      b' ::: bT <- x ::: t |- runCheck (goalIs (Type.instantiate (pure x) b) (body x))
+      pure (Type.lam x b' ::: Type.pi (x ::: t) bT)
     _ -> fail ("expected function type, got " <> show expected)
 
-type' :: Infer (Type Name)
-type' = pure Type
+type' :: Infer (Typed Value Name)
+type' = pure (Type ::: Type)
 
-($$) :: Infer (Type Name) -> Check (Type Name) -> Infer (Type Name)
+($$) :: Infer (Typed Value Name) -> Check (Typed Value Name) -> Infer (Typed Value Name)
 f $$ a = do
-  f' <- f
-  case f' of
+  f' ::: fT <- f
+  case fT of
     Pi t b -> do
-      a' <- ascribe t a
-      pure (Type.instantiate a' b)
+      a' ::: aT <- ascribe t a
+      pure (f' Type.$$ a' ::: Type.instantiate aT b)
     _ -> fail ("expected function type, got " <> show f')
 
 ascribe :: Type Name -> Check a -> Infer a
 ascribe ty = Infer . runReader ty . runCheck
 
-switch :: Infer (Type Name) -> Check (Type Name)
+switch :: Infer (Typed Value Name) -> Check (Typed Value Name)
 switch m = do
   expected <- goal
-  actual <- Check (ReaderC (const (runInfer m)))
+  val ::: actual <- Check (ReaderC (const (runInfer m)))
   unless (expected == actual) $
     fail ("expected: " <> show expected <> "\n  actual: " <> show actual)
-  pure actual
+  pure (val ::: actual)
 
 goal :: Check (Type Name)
 goal = Check ask
