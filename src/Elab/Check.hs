@@ -22,12 +22,12 @@ newtype Check a = Check { runCheck :: ReaderC (Type Name) (ReaderC Signature (Re
 newtype Infer a = Infer { runInfer :: ReaderC Signature (ReaderC Gensym (FreshC (FailC VoidC))) a }
   deriving (Applicative, Functor, Monad, MonadFail)
 
-assumption :: Name -> Infer (Typed Value Name)
+assumption :: Name -> Infer (Typed Name Value)
 assumption v = Infer $ do
   sig <- ask
   maybe (fail ("Variable not in scope: " <> show v)) (pure . (pure v :::)) (Map.lookup v sig)
 
-introduce :: (Name -> Check (Typed Value Name)) -> Check (Typed Value Name)
+introduce :: (Name -> Check (Typed Name Value)) -> Check (Typed Name Value)
 introduce body = do
   expected <- goal
   case expected of
@@ -37,17 +37,17 @@ introduce body = do
       pure (Type.lam x b' ::: Type.pi (x ::: t) bT)
     _ -> fail ("expected function type, got " <> show expected)
 
-type' :: Infer (Typed Value Name)
+type' :: Infer (Typed Name Value)
 type' = pure (Type ::: Type)
 
-pi :: Check (Typed Value Name) -> (Name -> Check (Typed Value Name)) -> Infer (Typed Value Name)
+pi :: Check (Typed Name Value) -> (Name -> Check (Typed Name Value)) -> Infer (Typed Name Value)
 pi t body = do
   t' ::: _ <- ascribe Type t
   x <- Infer (Gensym <$> gensym "pi")
   body' ::: _ <- Infer (x ::: t' |- runInfer (ascribe Type (body x)))
   pure (Type.pi (x ::: t') body' ::: Type)
 
-($$) :: Infer (Typed Value Name) -> Check (Typed Value Name) -> Infer (Typed Value Name)
+($$) :: Infer (Typed Name Value) -> Check (Typed Name Value) -> Infer (Typed Name Value)
 f $$ a = do
   f' ::: fT <- f
   case fT of
@@ -59,7 +59,7 @@ f $$ a = do
 ascribe :: Type Name -> Check a -> Infer a
 ascribe ty = Infer . runReader ty . runCheck
 
-switch :: Infer (Typed Value Name) -> Check (Typed Value Name)
+switch :: Infer (Typed Name Value) -> Check (Typed Name Value)
 switch m = do
   expected <- goal
   val ::: actual <- Check (ReaderC (const (runInfer m)))

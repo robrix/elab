@@ -18,7 +18,7 @@ newtype Scope a = Scope (Type a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 
-data Typed a b = a ::: Type b
+data Typed v a = a ::: Type v
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 infix 6 :::
