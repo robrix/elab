@@ -15,7 +15,7 @@ import qualified Elab.Type as Type
 import Prelude hiding (fail)
 
 type Context = Map.Map Name (Type Name)
-type Value = Type Name
+type Value = Type
 
 newtype Check a = Check { runCheck :: ReaderC (Type Name) (ReaderC Context (ReaderC Gensym (FreshC (FailC VoidC)))) a }
   deriving (Applicative, Functor, Monad, MonadFail)
@@ -23,10 +23,10 @@ newtype Check a = Check { runCheck :: ReaderC (Type Name) (ReaderC Context (Read
 newtype Infer a = Infer { runInfer :: ReaderC Context (ReaderC Gensym (FreshC (FailC VoidC))) a }
   deriving (Applicative, Functor, Monad, MonadFail)
 
-assume :: Name -> Infer (Value ::: Type Name)
+assume :: Name -> Infer (Value Name ::: Type Name)
 assume v = (pure v :::) <$> Infer (lookupVar v)
 
-intro :: (Name -> Check (Value ::: Type Name)) -> Check (Value ::: Type Name)
+intro :: (Name -> Check (Value Name ::: Type Name)) -> Check (Value Name ::: Type Name)
 intro body = do
   expected <- goal
   case expected of
@@ -36,17 +36,17 @@ intro body = do
       pure (Type.lam x b' ::: Type.pi (x ::: t) bT)
     _ -> fail ("expected function type, got " <> show expected)
 
-type' :: Infer (Value ::: Type Name)
+type' :: Infer (Value Name ::: Type Name)
 type' = pure (Type ::: Type)
 
-pi :: Check (Value ::: Type Name) -> (Name -> Check (Value ::: Type Name)) -> Infer (Value ::: Type Name)
+pi :: Check (Value Name ::: Type Name) -> (Name -> Check (Value Name ::: Type Name)) -> Infer (Value Name ::: Type Name)
 pi t body = do
   t' ::: _ <- ascribe Type t
   x <- Infer (Local <$> gensym "pi")
   body' ::: _ <- Infer (x ::: t' |- runInfer (ascribe Type (body x)))
   pure (Type.pi (x ::: t') body' ::: Type)
 
-($$) :: Infer (Value ::: Type Name) -> Check (Value ::: Type Name) -> Infer (Value ::: Type Name)
+($$) :: Infer (Value Name ::: Type Name) -> Check (Value Name ::: Type Name) -> Infer (Value Name ::: Type Name)
 f $$ a = do
   f' ::: fT <- f
   case fT of
@@ -58,7 +58,7 @@ f $$ a = do
 ascribe :: Type Name -> Check a -> Infer a
 ascribe ty = Infer . runReader ty . runCheck
 
-switch :: Infer (Value ::: Type Name) -> Check (Value ::: Type Name)
+switch :: Infer (Value Name ::: Type Name) -> Check (Value Name ::: Type Name)
 switch m = do
   expected <- goal
   val ::: actual <- Check (ReaderC (const (runInfer m)))
@@ -89,17 +89,17 @@ runCheck' :: Context -> Type Name -> Check a -> Either String a
 runCheck' sig ty = runInfer' sig . ascribe ty
 
 
-newtype Elab a = Elab { runElab :: ReaderC (Type Name) (ReaderC Context (ReaderC Gensym (FreshC (WriterC (Set.Set (Contextual (Equation (Value ::: Type Name)))) (FailC VoidC))))) a }
+newtype Elab a = Elab { runElab :: ReaderC (Type Name) (ReaderC Context (ReaderC Gensym (FreshC (WriterC (Set.Set (Contextual (Equation (Value Name ::: Type Name)))) (FailC VoidC))))) a }
   deriving (Applicative, Functor, Monad, MonadFail)
 
-assume' :: Name -> Elab (Value ::: Type Name)
+assume' :: Name -> Elab (Value Name ::: Type Name)
 assume' v = do
   a ::: ty <- goal' >>= exists
   _A <- Elab (lookupVar v)
   unify (pure v ::: _A :===: a ::: ty)
   pure (a ::: ty)
 
-intro' :: (Name -> Elab (Value ::: Type Name)) -> Elab (Value ::: Type Name)
+intro' :: (Name -> Elab (Value Name ::: Type Name)) -> Elab (Value Name ::: Type Name)
 intro' body = do
   a ::: ty <- goal' >>= exists
   _A ::: _ <- exists Type
@@ -109,13 +109,13 @@ intro' body = do
   unify (Type.lam x u ::: Type.pi (x ::: _A) _B :===: a ::: ty)
   pure (a ::: ty)
 
-type'' :: Elab (Value ::: Type Name)
+type'' :: Elab (Value Name ::: Type Name)
 type'' = do
   a ::: ty <- goal' >>= exists
   unify (Type ::: Type :===: a ::: ty)
   pure (a ::: ty)
 
-pi' :: Elab (Value ::: Type Name) -> (Name -> Elab (Value ::: Type Name)) -> Elab (Value ::: Type Name)
+pi' :: Elab (Value Name ::: Type Name) -> (Name -> Elab (Value Name ::: Type Name)) -> Elab (Value Name ::: Type Name)
 pi' t body = do
   a ::: ty <- goal' >>= exists
   t' ::: _ <- goalIs' Type t
@@ -124,7 +124,7 @@ pi' t body = do
   unify (Type.pi (x ::: t') b' ::: Type :===: a ::: ty)
   pure (a ::: ty)
 
-($$$) :: Elab (Value ::: Type Name) -> Elab (Value ::: Type Name) -> Elab (Value ::: Type Name)
+($$$) :: Elab (Value Name ::: Type Name) -> Elab (Value Name ::: Type Name) -> Elab (Value Name ::: Type Name)
 f $$$ a = do
   res <- goal' >>= exists
   _A ::: _ <- exists Type
@@ -142,7 +142,7 @@ freshName s = Local <$> Elab (gensym s)
 context :: Elab Context
 context = Elab ask
 
-exists :: Type Name -> Elab (Value ::: Type Name)
+exists :: Type Name -> Elab (Value Name ::: Type Name)
 exists ty = do
   ctx <- context
   -- FIXME: add meta names
@@ -160,7 +160,7 @@ a ::: ty ||- m = Elab (local (Map.insert a ty) (runElab m))
 
 infix 5 ||-
 
-unify :: Equation (Value ::: Type Name) -> Elab ()
+unify :: Equation (Value Name ::: Type Name) -> Elab ()
 unify constraint = context >>= Elab . tell . Set.singleton . (:|- constraint)
 
 

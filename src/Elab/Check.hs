@@ -8,11 +8,11 @@ import Elab.Term (Term(..), instantiate)
 import Elab.Type (Type)
 import Prelude hiding (fail, pi)
 
-check :: Term Name -> Check (Value ::: Type Name)
+check :: Term Name -> Check (Value Name ::: Type Name)
 check (Lam body) = intro (\ name -> check (instantiate (pure name) body))
 check t          = switch (infer t)
 
-infer :: Term Name -> Infer (Value ::: Type Name)
+infer :: Term Name -> Infer (Value Name ::: Type Name)
 infer (Head (Bound i)) = fail ("Unexpected bound variable " ++ show i)
 infer (Head (Free v))  = assume v
 infer (f :$ a)         = infer f $$ check a
