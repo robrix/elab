@@ -40,6 +40,13 @@ introduce body = do
 type' :: Infer (Typed Value Name)
 type' = pure (Type ::: Type)
 
+pi :: Check (Typed Value Name) -> (Name -> Check (Typed Value Name)) -> Infer (Typed Value Name)
+pi t body = do
+  t' ::: _ <- ascribe Type t
+  x <- Infer (Gensym <$> gensym "pi")
+  body' ::: _ <- Infer (x ::: t' |- runInfer (ascribe Type (body x)))
+  pure (Type.pi (x ::: t') body' ::: Type)
+
 ($$) :: Infer (Typed Value Name) -> Check (Typed Value Name) -> Infer (Typed Value Name)
 f $$ a = do
   f' ::: fT <- f
