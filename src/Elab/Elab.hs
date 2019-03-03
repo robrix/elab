@@ -116,10 +116,10 @@ freshName :: String -> Elab Name
 freshName s = Gensym <$> Elab (gensym s)
 
 exists :: Type Name -> Elab (Value ::: Type Name)
-exists ty = Elab $ do
-  ctx <- ask
+exists ty = do
+  ctx <- Elab ask
   -- FIXME: add meta names
-  n <- Gensym <$> gensym "_meta_"
+  n <- freshName "_meta_"
   pure (pure n Type.$$* fmap pure (Map.keys (ctx :: Context)) ::: ty)
 
 goal' :: Elab (Type Name)
