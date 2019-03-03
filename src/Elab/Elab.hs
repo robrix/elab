@@ -89,12 +89,12 @@ runCheck' :: Context -> Type Name -> Check a -> Either String a
 runCheck' sig ty = runInfer' sig . ascribe ty
 
 
-newtype Elab a = Elab { runElab :: ReaderC Context (ReaderC Gensym (FreshC (WriterC (Set.Set (Contextual (Equation (Value ::: Type Name)))) (FailC VoidC)))) a }
+newtype Elab a = Elab { runElab :: ReaderC (Type Name) (ReaderC Context (ReaderC Gensym (FreshC (WriterC (Set.Set (Contextual (Equation (Value ::: Type Name)))) (FailC VoidC))))) a }
   deriving (Applicative, Functor, Monad, MonadFail)
 
-assume' :: Name ::: Type Name -> Elab (Value ::: Type Name)
-assume' (v ::: ty) = Elab $ do
-  a ::: ty <- exists ty
+assume' :: Name -> Elab (Value ::: Type Name)
+assume' v = Elab $ do
+  a ::: ty <- ask >>= exists
   _A <- lookupVar v
   ctx <- ask
   tell (Set.singleton (ctx :|- pure v ::: _A :===: a ::: ty))
