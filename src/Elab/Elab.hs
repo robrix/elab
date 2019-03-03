@@ -105,13 +105,16 @@ intro' body = do
   a ::: ty <- goal' >>= exists
 
   _A ::: _ <- exists Type
-  x <- Elab (Gensym <$> gensym "intro")
+  x <- gensym' "intro"
   _B ::: _ <- x ::: _A ||- exists Type
   u ::: _ <- x ::: _A ||- goalIs' _B (body x)
   ctx <- Elab ask
   unify (ctx :|- Type.lam x u ::: Type.pi (x ::: _A) _B :===: a ::: ty)
   pure (a ::: ty)
 
+
+gensym' :: String -> Elab Name
+gensym' s = Gensym <$> Elab (gensym s)
 
 exists :: Type Name -> Elab (Value ::: Type Name)
 exists ty = Elab $ do
