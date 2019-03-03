@@ -1,13 +1,17 @@
-{-# LANGUAGE DeriveTraversable, FlexibleContexts, GeneralizedNewtypeDeriving, TypeOperators #-}
+{-# LANGUAGE DeriveTraversable, FlexibleContexts, GeneralizedNewtypeDeriving, LambdaCase, TypeOperators #-}
 module Elab.Elab where
 
 import Control.Effect
 import Control.Effect.Fail
 import Control.Effect.Fresh
 import Control.Effect.Reader hiding (Local)
+import Control.Effect.State
 import Control.Effect.Writer
 import Control.Monad (unless)
+import Data.Foldable (fold, foldl')
 import qualified Data.Map as Map
+import Data.Maybe (fromMaybe)
+import qualified Data.Sequence as Seq
 import qualified Data.Set as Set
 import Elab.Name
 import Elab.Type (Type(..))
@@ -169,3 +173,20 @@ data Contextual a = Context (Type Meta) :|- a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 infixr 1 :|-
+
+
+runElab :: Maybe (Type Meta) -> Elab (Value Meta ::: Type Meta) -> Either String (Value Name ::: Type Name)
+runElab ty (Elab m) = run . runFail $ do
+  (constraints, val ::: ty) <- runWriter (runFresh (runReader (Root "elab") (runReader (mempty :: Context (Type Meta)) (runReader (fromMaybe Type ty) m))))
+  evalState (Seq.empty :: Seq.Seq (Contextual (Equation (Value Meta ::: Type Meta)))) $ do
+    stuck <- fmap fold . execState (Map.empty :: Map.Map Gensym (Set.Set (Contextual (Equation (Value Meta ::: Type Meta))))) $ do
+      modify (flip (foldl' (Seq.|>)) constraints)
+      pure ()
+    unless (null stuck) $ fail ("stuck metavariables: " ++ show stuck)
+    let subst = Map.empty
+    val' <- substitute subst val
+    ty' <- substitute subst ty
+    pure (val' ::: ty')
+  where substitute subst = traverse $ \case
+          Name n -> pure n
+          Meta m -> maybe (fail ("unsolved metavariable " ++ show m)) pure (Map.lookup m subst)
