@@ -93,16 +93,16 @@ newtype Elab a = Elab { runElab :: ReaderC (Type Name) (ReaderC Context (ReaderC
   deriving (Applicative, Functor, Monad, MonadFail)
 
 assume' :: Name -> Elab (Value ::: Type Name)
-assume' v = Elab $ do
-  a ::: ty <- ask >>= exists
-  _A <- lookupVar v
-  ctx <- ask
-  tell (Set.singleton (ctx :|- pure v ::: _A :===: a ::: ty))
+assume' v = do
+  a ::: ty <- goal' >>= exists
+  _A <- Elab (lookupVar v)
+  ctx <- Elab ask
+  Elab (tell (Set.singleton (ctx :|- pure v ::: _A :===: a ::: ty)))
   pure (a ::: ty)
 
 
-exists :: (Carrier sig m, Member Fresh sig, Member (Reader Context) sig, Member (Reader Gensym) sig) => Type Name -> m (Value ::: Type Name)
-exists ty = do
+exists :: Type Name -> Elab (Value ::: Type Name)
+exists ty = Elab $ do
   ctx <- ask
   -- FIXME: add meta names
   n <- Gensym <$> gensym "_meta_"
