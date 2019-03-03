@@ -12,7 +12,6 @@ import Elab.Type (Type(..))
 import qualified Elab.Type as Type
 import Prelude hiding (fail)
 
-type Context = [Type Name]
 type Signature = Map.Map Name (Type Name)
 type Value = Type Name
 
