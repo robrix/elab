@@ -104,7 +104,7 @@ intro' :: (Name -> Elab (Value ::: Type Name)) -> Elab (Value ::: Type Name)
 intro' body = do
   a ::: ty <- goal' >>= exists
   _A ::: _ <- exists Type
-  x <- gensym' "intro"
+  x <- freshName "intro"
   _B ::: _ <- x ::: _A ||- exists Type
   u ::: _ <- x ::: _A ||- goalIs' _B (body x)
   ctx <- Elab ask
@@ -112,8 +112,8 @@ intro' body = do
   pure (a ::: ty)
 
 
-gensym' :: String -> Elab Name
-gensym' s = Gensym <$> Elab (gensym s)
+freshName :: String -> Elab Name
+freshName s = Gensym <$> Elab (gensym s)
 
 exists :: Type Name -> Elab (Value ::: Type Name)
 exists ty = Elab $ do
