@@ -16,7 +16,8 @@ category:            Language
 extra-source-files:  CHANGELOG.md
 
 library
-  exposed-modules:     Elab.Elab
+  exposed-modules:     Elab.Check
+                     , Elab.Elab
                      , Elab.Name
                      , Elab.Stack
                      , Elab.Term
