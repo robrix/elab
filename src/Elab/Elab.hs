@@ -92,3 +92,8 @@ data Equation a
   deriving (Eq, Ord, Show)
 
 infix 3 :===:
+
+data Contextual a = Context :|- a
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+infixr 1 :|-
