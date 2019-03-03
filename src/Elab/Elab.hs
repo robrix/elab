@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveFunctor, FlexibleContexts, GeneralizedNewtypeDeriving #-}
-module Elab.Check where
+module Elab.Elab where
 
 import Control.Effect
 import Control.Effect.Fail
