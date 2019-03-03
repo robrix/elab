@@ -24,8 +24,8 @@ newtype Infer a = Infer { runInfer :: ReaderC Signature (ReaderC Gensym (FreshC 
 
 assume :: Name -> Infer (Value ::: Type Name)
 assume v = Infer $ do
-  sig <- ask
-  maybe (fail ("Variable not in scope: " <> show v)) (pure . (pure v :::)) (Map.lookup v sig)
+  ty <- asks (Map.lookup v)
+  maybe (fail ("Variable not in scope: " <> show v)) (pure . (pure v :::)) ty
 
 intro :: (Name -> Check (Value ::: Type Name)) -> Check (Value ::: Type Name)
 intro body = do
