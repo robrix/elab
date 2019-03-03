@@ -148,10 +148,10 @@ goal' :: Elab (Type Meta)
 goal' = Elab ask
 
 goalIs' :: Type Meta -> Elab a -> Elab a
-goalIs' ty = Elab . local (const ty) . runElab
+goalIs' ty (Elab m) = Elab (local (const ty) m)
 
 (||-) :: Name ::: Type Meta -> Elab a -> Elab a
-a ::: ty ||- m = Elab (local (Map.insert a ty) (runElab m))
+a ::: ty ||- Elab m = Elab (local (Map.insert a ty) m)
 
 infix 5 ||-
 
