@@ -108,6 +108,9 @@ exists ty = do
   n <- Gensym <$> gensym "_meta_"
   pure (pure n Type.$$* fmap pure (Map.keys (ctx :: Context)) ::: ty)
 
+goal' :: Elab (Type Name)
+goal' = Elab ask
+
 
 data Equation a
   = a :===: a
