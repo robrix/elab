@@ -8,7 +8,7 @@ import Elab.Type (Typed(..))
 import Prelude hiding (fail, pi)
 
 check :: Term Name -> Check (Typed Name Value)
-check (Lam body) = introduce (\ name -> check (instantiate (pure name) body))
+check (Lam body) = intro (\ name -> check (instantiate (pure name) body))
 check t          = switch (infer t)
 
 infer :: Term Name -> Infer (Typed Name Value)

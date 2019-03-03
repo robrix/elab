@@ -27,12 +27,12 @@ assume v = Infer $ do
   sig <- ask
   maybe (fail ("Variable not in scope: " <> show v)) (pure . (pure v :::)) (Map.lookup v sig)
 
-introduce :: (Name -> Check (Typed Name Value)) -> Check (Typed Name Value)
-introduce body = do
+intro :: (Name -> Check (Typed Name Value)) -> Check (Typed Name Value)
+intro body = do
   expected <- goal
   case expected of
     Pi t b -> Check $ do
-      x <- Gensym <$> gensym "introduce"
+      x <- Gensym <$> gensym "intro"
       b' ::: bT <- x ::: t |- runCheck (goalIs (Type.instantiate (pure x) b) (body x))
       pure (Type.lam x b' ::: Type.pi (x ::: t) bT)
     _ -> fail ("expected function type, got " <> show expected)
