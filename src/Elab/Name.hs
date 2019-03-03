@@ -17,7 +17,7 @@ data Name
   deriving (Eq, Ord, Show)
 
 
-data MetaName
+data Meta
   = Name Name
   | Meta Gensym
   deriving (Eq, Ord, Show)
