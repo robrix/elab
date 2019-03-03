@@ -96,8 +96,7 @@ assume' :: Name -> Elab (Value Meta ::: Type Meta)
 assume' v = do
   res <- goal' >>= exists
   _A <- Elab (lookupVar v)
-  unify (pure (Name v) ::: _A :===: res)
-  pure res
+  res <$ unify (pure (Name v) ::: _A :===: res)
 
 intro' :: (Name -> Elab (Value Meta ::: Type Meta)) -> Elab (Value Meta ::: Type Meta)
 intro' body = do
@@ -106,14 +105,12 @@ intro' body = do
   x <- freshName "intro"
   _B ::: _ <- x ::: _A ||- exists Type
   u ::: _ <- x ::: _A ||- goalIs' _B (body x)
-  unify (Type.lam (Name x) u ::: Type.pi (Name x ::: _A) _B :===: res)
-  pure res
+  res <$ unify (Type.lam (Name x) u ::: Type.pi (Name x ::: _A) _B :===: res)
 
 type'' :: Elab (Value Meta ::: Type Meta)
 type'' = do
   res <- goal' >>= exists
-  unify (Type ::: Type :===: res)
-  pure res
+  res <$ unify (Type ::: Type :===: res)
 
 pi' :: Elab (Value Meta ::: Type Meta) -> (Name -> Elab (Value Meta ::: Type Meta)) -> Elab (Value Meta ::: Type Meta)
 pi' t body = do
@@ -121,8 +118,7 @@ pi' t body = do
   t' ::: _ <- goalIs' Type t
   x <- freshName "pi"
   b' ::: _ <- x ::: t' ||- goalIs' Type (body x)
-  unify (Type.pi (Name x ::: t') b' ::: Type :===: res)
-  pure res
+  res <$ unify (Type.pi (Name x ::: t') b' ::: Type :===: res)
 
 ($$$) :: Elab (Value Meta ::: Type Meta) -> Elab (Value Meta ::: Type Meta) -> Elab (Value Meta ::: Type Meta)
 f $$$ a = do
@@ -132,8 +128,7 @@ f $$$ a = do
   x <- freshName "$$"
   f' ::: _ <- goalIs' (Type.pi (Name x ::: _A) _B) f
   a' ::: _ <- goalIs' _A a
-  unify (f' Type.$$ a' ::: _B :===: res)
-  pure res
+  res <$ unify (f' Type.$$ a' ::: _B :===: res)
 
 
 freshName :: String -> Elab Name
