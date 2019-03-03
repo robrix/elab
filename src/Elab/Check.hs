@@ -47,8 +47,9 @@ ascribe :: Type Name -> Check (Type Name) -> Infer (Type Name)
 ascribe ty = Infer . runReader ty . runCheck
 
 switch :: Infer (Type Name) -> Check (Type Name)
-switch m = Check $ ReaderC $ \ expected -> do
-  actual <- runInfer m
+switch m = do
+  expected <- goal
+  actual <- Check (ReaderC (const (runInfer m)))
   unless (expected == actual) $
     fail ("expected: " <> show expected <> "\n  actual: " <> show actual)
   pure actual
