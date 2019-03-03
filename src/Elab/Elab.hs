@@ -124,6 +124,17 @@ pi' t body = do
   unify (Type.pi (x ::: t') b' ::: Type :===: a ::: ty)
   pure (a ::: ty)
 
+($$$) :: Elab (Value ::: Type Name) -> Elab (Value ::: Type Name) -> Elab (Value ::: Type Name)
+f $$$ a = do
+  res <- goal' >>= exists
+  _A ::: _ <- exists Type
+  _B ::: _ <- exists Type
+  x <- freshName "$$"
+  f' ::: _ <- goalIs' (Type.pi (x ::: _A) _B) f
+  a' ::: _ <- goalIs' _A a
+  unify (f' Type.$$ a' ::: _B :===: res)
+  pure res
+
 
 freshName :: String -> Elab Name
 freshName s = Gensym <$> Elab (gensym s)
