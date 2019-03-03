@@ -8,7 +8,7 @@ import Control.Effect.Reader
 import Control.Monad (unless)
 import qualified Data.Map as Map
 import Elab.Name
-import Elab.Type (Type(..), Typing(..))
+import Elab.Type (Type(..), Typed(..))
 import qualified Elab.Type as Type
 import Prelude hiding (fail)
 
@@ -66,7 +66,7 @@ goalIs :: Type Name -> Check a -> Check a
 goalIs ty = Check . local (const ty) . runCheck
 
 
-(|-) :: (Carrier sig m, Member (Reader Signature) sig) => Typing Name -> m a -> m a
+(|-) :: (Carrier sig m, Member (Reader Signature) sig) => Typed Name -> m a -> m a
 a ::: ty |- m = local (Map.insert a ty) m
 
 infix 5 |-
