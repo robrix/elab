@@ -93,7 +93,7 @@ runCheck' :: Context (Type Name) -> Type Name -> Check a -> Either String a
 runCheck' sig ty = runInfer' sig . ascribe ty
 
 
-newtype Elab a = Elab (ReaderC (Type Meta) (ReaderC (Context (Type Meta)) (ReaderC Gensym (FreshC (WriterC (Set.Set (Contextual (Equation (Value Meta ::: Type Meta)))) (FailC VoidC))))) a)
+newtype Elab a = Elab (ReaderC (Type Meta) (ReaderC (Context (Type Meta)) (ReaderC Gensym (FreshC (WriterC (Set.Set Constraint) (FailC VoidC))))) a)
   deriving (Applicative, Functor, Monad, MonadFail)
 
 assume' :: Name -> Elab (Value Meta ::: Type Meta)
@@ -174,12 +174,13 @@ data Contextual a = Context (Type Meta) :|-: a
 
 infixr 1 :|-:
 
+type Constraint = Contextual (Equation (Value Meta ::: Type Meta))
 
 runElab :: Maybe (Type Meta) -> Elab (Value Meta ::: Type Meta) -> Either String (Value Name ::: Type Name)
 runElab ty (Elab m) = run . runFail $ do
   (constraints, val ::: ty) <- runWriter (runFresh (runReader (Root "elab") (runReader (mempty :: Context (Type Meta)) (runReader (fromMaybe Type ty) m))))
-  evalState (Seq.empty :: Seq.Seq (Contextual (Equation (Value Meta ::: Type Meta)))) $ do
-    stuck <- fmap fold . execState (Map.empty :: Map.Map Gensym (Set.Set (Contextual (Equation (Value Meta ::: Type Meta))))) $ do
+  evalState (Seq.empty :: Seq.Seq Constraint) $ do
+    stuck <- fmap fold . execState (Map.empty :: Map.Map Gensym (Set.Set Constraint)) $ do
       modify (flip (foldl' (Seq.|>)) constraints)
       pure ()
     unless (null stuck) $ fail ("stuck metavariables: " ++ show stuck)
@@ -198,8 +199,8 @@ simplify :: ( Carrier sig m
             , Member (Reader Gensym) sig
             , MonadFail m
             )
-         => Contextual (Equation (Value Meta ::: Type Meta))
-         -> m (Set.Set (Contextual (Equation (Value Meta ::: Type Meta))))
+         => Constraint
+         -> m (Set.Set Constraint)
 simplify = execWriter . go
   where go = \case
           _ :|-: tm1 ::: ty1 :===: tm2 ::: ty2 | tm1 == tm2, ty1 == ty2 -> pure ()
