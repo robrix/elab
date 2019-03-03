@@ -111,6 +111,9 @@ exists ty = do
 goal' :: Elab (Type Name)
 goal' = Elab ask
 
+goalIs' :: Type Name -> Elab a -> Elab a
+goalIs' ty = Elab . local (const ty) . runElab
+
 
 data Equation a
   = a :===: a
