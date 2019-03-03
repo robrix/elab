@@ -67,3 +67,10 @@ goal = Check ask
 a ::: ty |- m = local (Map.insert a ty) m
 
 infix 5 |-
+
+
+runInfer' :: Signature -> Infer a -> Either String a
+runInfer' sig = run . runFail . runFresh . runReader (Root "root") . runReader sig  . runInfer
+
+runCheck' :: Signature -> Type Name -> Check a -> Either String a
+runCheck' sig ty = runInfer' sig . ascribe ty
