@@ -55,6 +55,9 @@ switch m = Check $ do
     fail ("expected: " <> show expected <> "\n  actual: " <> show actual)
   pure actual
 
+goal :: Check (Type Name)
+goal = Check ask
+
 
 (|-) :: (Carrier sig m, Member (Reader Signature) sig) => Typing Name -> m a -> m a
 a ::: ty |- m = local (Map.insert a ty) m
