@@ -19,3 +19,11 @@ infer (f :$ a)         = infer f $$ check a
 infer Type             = type'
 infer (Pi t body)      = pi (check t) (\ name -> check (instantiate (pure name) body))
 infer t                = fail ("No rule to infer type of term " ++ show t)
+
+elab :: Term Name -> Elab (Value Meta ::: Type Meta)
+elab (Head (Bound i)) = fail ("Unexpected bound variable " ++ show i)
+elab (Head (Free v))  = assume' v
+elab (Lam b)          = intro' (\ n -> elab (instantiate (pure n) b))
+elab (f :$ a)         = elab f $$$ elab a
+elab Type             = type''
+elab (Pi t b)         = pi' (elab t) (\ n -> elab (instantiate (pure n) b))
