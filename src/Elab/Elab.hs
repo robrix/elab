@@ -135,7 +135,7 @@ exists :: Type Name -> Elab (Value ::: Type Name)
 exists ty = do
   ctx <- context
   -- FIXME: add meta names
-  n <- freshName "_meta_"
+  n <- freshName "meta"
   pure (pure n Type.$$* fmap pure (Map.keys (ctx :: Context)) ::: ty)
 
 goal' :: Elab (Type Name)
