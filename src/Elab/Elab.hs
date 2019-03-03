@@ -23,9 +23,7 @@ newtype Infer a = Infer { runInfer :: ReaderC Signature (ReaderC Gensym (FreshC 
   deriving (Applicative, Functor, Monad, MonadFail)
 
 assume :: Name -> Infer (Value ::: Type Name)
-assume v = Infer $ do
-  ty <- asks (Map.lookup v)
-  maybe (fail ("Variable not in scope: " <> show v)) (pure . (pure v :::)) ty
+assume v = (pure v :::) <$> Infer (lookupVar v)
 
 intro :: (Name -> Check (Value ::: Type Name)) -> Check (Value ::: Type Name)
 intro body = do
@@ -78,6 +76,9 @@ goalIs ty = Check . local (const ty) . runCheck
 a ::: ty |- m = local (Map.insert a ty) m
 
 infix 5 |-
+
+lookupVar :: (Carrier sig m, Member (Reader Signature) sig, MonadFail m) => Name -> m (Type Name)
+lookupVar v = asks (Map.lookup v) >>= maybe (fail ("Variable not in scope: " <> show v)) pure
 
 
 runInfer' :: Signature -> Infer a -> Either String a
