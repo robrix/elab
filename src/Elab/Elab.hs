@@ -89,7 +89,7 @@ runCheck' :: Context (Type Name) -> Type Name -> Check a -> Either String a
 runCheck' sig ty = runInfer' sig . ascribe ty
 
 
-newtype Elab a = Elab { runElab :: ReaderC (Type Meta) (ReaderC (Context (Type Meta)) (ReaderC Gensym (FreshC (WriterC (Set.Set (Contextual (Equation (Value Meta ::: Type Meta)))) (FailC VoidC))))) a }
+newtype Elab a = Elab (ReaderC (Type Meta) (ReaderC (Context (Type Meta)) (ReaderC Gensym (FreshC (WriterC (Set.Set (Contextual (Equation (Value Meta ::: Type Meta)))) (FailC VoidC))))) a)
   deriving (Applicative, Functor, Monad, MonadFail)
 
 assume' :: Name -> Elab (Value Meta ::: Type Meta)
