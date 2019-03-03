@@ -190,3 +190,17 @@ runElab ty (Elab m) = run . runFail $ do
   where substitute subst = traverse $ \case
           Name n -> pure n
           Meta m -> maybe (fail ("unsolved metavariable " ++ show m)) pure (Map.lookup m subst)
+
+simplify :: ( Carrier sig m
+            , Effect sig
+            , Member Fresh sig
+            , Member (Reader (Context (Type Meta))) sig
+            , Member (Reader Gensym) sig
+            , MonadFail m
+            )
+         => Contextual (Equation (Value Meta ::: Type Meta))
+         -> m (Set.Set (Contextual (Equation (Value Meta ::: Type Meta))))
+simplify = execWriter . go
+  where go = \case
+          _ :|-: tm1 ::: ty1 :===: tm2 ::: ty2 | tm1 == tm2, ty1 == ty2 -> pure ()
+          c -> fail ("unsimplifiable constraint: " ++ show c)
