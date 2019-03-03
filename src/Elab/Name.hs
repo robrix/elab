@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveTraversable, FlexibleContexts #-}
+{-# LANGUAGE DeriveTraversable, FlexibleContexts, TypeOperators #-}
 module Elab.Name where
 
 import Control.Effect
@@ -31,3 +31,9 @@ infixl 6 //
 
 gensym :: (Carrier sig m, Member Fresh sig, Member (Reader Gensym) sig) => String -> m Gensym
 gensym s = (:/) <$> ask <*> ((,) s <$> fresh)
+
+
+data a ::: b = a ::: b
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+infix 6 :::

@@ -8,7 +8,7 @@ import Control.Effect.Reader
 import Control.Monad (unless)
 import qualified Data.Map as Map
 import Elab.Name
-import Elab.Type (Type(..), (:::)(..))
+import Elab.Type (Type(..))
 import qualified Elab.Type as Type
 import Prelude hiding (fail)
 

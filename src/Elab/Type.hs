@@ -18,11 +18,6 @@ newtype Scope a = Scope (Type a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 
-data a ::: b = a ::: b
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
-
-infix 6 :::
-
 lam :: Eq a => a -> Type a -> Type a
 lam n b = Lam (bind n b)
 

@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveTraversable, LambdaCase #-}
+{-# LANGUAGE DeriveTraversable, LambdaCase, TypeOperators #-}
 module Elab.Term where
 
 import Control.Monad (ap)
@@ -25,16 +25,11 @@ lam n b = Lam (bind n b)
 lams :: (Eq a, Foldable t) => t a -> Term a -> Term a
 lams names body = foldr lam body names
 
-pi :: Eq a => Typed a -> Term a -> Term a
+pi :: Eq a => a ::: Term a -> Term a -> Term a
 pi (n ::: t) b = Pi t (bind n b)
 
-pis :: (Eq a, Foldable t) => t (Typed a) -> Term a -> Term a
+pis :: (Eq a, Foldable t) => t (a ::: Term a) -> Term a -> Term a
 pis names body = foldr pi body names
-
-data Typed a = a ::: Term a
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
-
-infix 6 :::
 
 
 -- | Bind occurrences of a 'Name' in a 'Term' term, producing a 'Scope' in which the 'Name' is bound.

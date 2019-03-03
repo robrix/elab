@@ -5,7 +5,7 @@ import Control.Monad.Fail
 import Elab.Elab
 import Elab.Name
 import Elab.Term (Term(..), instantiate)
-import Elab.Type ((:::)(..), Type)
+import Elab.Type (Type)
 import Prelude hiding (fail, pi)
 
 check :: Term Name -> Check (Value ::: Type Name)
