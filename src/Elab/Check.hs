@@ -14,6 +14,7 @@ import Prelude hiding (fail)
 
 type Context = [Type Name]
 type Signature = Map.Map Name (Type Name)
+type Value = Type Name
 
 newtype Check a = Check { runCheck :: ReaderC (Type Name) (ReaderC Signature (ReaderC Gensym (FreshC (FailC VoidC)))) a }
   deriving (Applicative, Functor, Monad, MonadFail)
