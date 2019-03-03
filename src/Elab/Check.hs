@@ -21,8 +21,8 @@ newtype Check a = Check { runCheck :: ReaderC (Type Name) (ReaderC Signature (Re
 newtype Infer a = Infer { runInfer :: ReaderC Signature (ReaderC Gensym (FreshC (FailC VoidC))) a }
   deriving (Applicative, Functor, Monad, MonadFail)
 
-free :: Name -> Infer (Type Name)
-free v = Infer $ do
+assumption :: Name -> Infer (Type Name)
+assumption v = Infer $ do
   sig <- ask
   maybe (fail ("Variable not in scope: " <> show v)) pure (Map.lookup v sig)
 
