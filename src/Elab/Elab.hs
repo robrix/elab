@@ -87,6 +87,16 @@ runCheck' :: Context -> Type Name -> Check a -> Either String a
 runCheck' sig ty = runInfer' sig . ascribe ty
 
 
+
+
+exists :: (Carrier sig m, Member Fresh sig, Member (Reader Context) sig, Member (Reader Gensym) sig) => Type Name -> m (Value ::: Type Name)
+exists ty = do
+  ctx <- ask
+  -- FIXME: add meta names
+  n <- Gensym <$> gensym "_meta_"
+  pure (pure n Type.$$* fmap pure (Map.keys (ctx :: Context)) ::: ty)
+
+
 data Equation a
   = a :===: a
   deriving (Eq, Ord, Show)
