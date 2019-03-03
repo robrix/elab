@@ -4,7 +4,7 @@ module Elab.Elab where
 import Control.Effect
 import Control.Effect.Fail
 import Control.Effect.Fresh
-import Control.Effect.Reader
+import Control.Effect.Reader hiding (Local)
 import Control.Effect.Writer
 import Control.Monad (unless)
 import qualified Data.Map as Map
@@ -31,7 +31,7 @@ intro body = do
   expected <- goal
   case expected of
     Pi t b -> Check $ do
-      x <- Gensym <$> gensym "intro"
+      x <- Local <$> gensym "intro"
       b' ::: bT <- x ::: t |- runCheck (goalIs (Type.instantiate (pure x) b) (body x))
       pure (Type.lam x b' ::: Type.pi (x ::: t) bT)
     _ -> fail ("expected function type, got " <> show expected)
@@ -42,7 +42,7 @@ type' = pure (Type ::: Type)
 pi :: Check (Value ::: Type Name) -> (Name -> Check (Value ::: Type Name)) -> Infer (Value ::: Type Name)
 pi t body = do
   t' ::: _ <- ascribe Type t
-  x <- Infer (Gensym <$> gensym "pi")
+  x <- Infer (Local <$> gensym "pi")
   body' ::: _ <- Infer (x ::: t' |- runInfer (ascribe Type (body x)))
   pure (Type.pi (x ::: t') body' ::: Type)
 
@@ -137,7 +137,7 @@ f $$$ a = do
 
 
 freshName :: String -> Elab Name
-freshName s = Gensym <$> Elab (gensym s)
+freshName s = Local <$> Elab (gensym s)
 
 context :: Elab Context
 context = Elab ask

@@ -13,7 +13,7 @@ data Head a
 
 data Name
   = Global String
-  | Gensym Gensym
+  | Local  Gensym
   deriving (Eq, Ord, Show)
 
 
