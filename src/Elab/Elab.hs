@@ -181,7 +181,7 @@ runElab ty (Elab m) = run . runFail $ do
   evalState (Seq.empty :: Seq.Seq (Contextual (Equation (Value Meta ::: Type Meta)))) $ do
     stuck <- fmap fold . execState (Map.empty :: Map.Map Gensym (Set.Set (Contextual (Equation (Value Meta ::: Type Meta))))) $ do
       modify (flip (foldl' (Seq.|>)) constraints)
-      step
+      pure ()
     unless (null stuck) $ fail ("stuck metavariables: " ++ show stuck)
     let subst = Map.empty
     val' <- substitute subst val
