@@ -17,6 +17,12 @@ data Name
   deriving (Eq, Ord, Show)
 
 
+data MetaName
+  = Name Name
+  | Meta Gensym
+  deriving (Eq, Ord, Show)
+
+
 data Gensym
   = Root String
   | Gensym :/ (String, Int)
