@@ -7,13 +7,14 @@ import Control.Effect.Fresh
 import Control.Effect.Reader hiding (Local)
 import Control.Effect.State
 import Control.Effect.Writer
-import Control.Monad (unless)
+import Control.Monad (join, unless, when)
 import Data.Foldable (fold, foldl')
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
 import qualified Data.Sequence as Seq
 import qualified Data.Set as Set
 import Elab.Name
+import Elab.Stack
 import Elab.Type (Type(..))
 import qualified Elab.Type as Type
 import Prelude hiding (fail)
@@ -188,18 +189,83 @@ infix 5 :=
 runElab :: Maybe (Type Meta) -> Elab (Value Meta ::: Type Meta) -> Either String (Value Name ::: Type Name)
 runElab ty (Elab m) = run . runFail $ do
   (constraints, val ::: ty) <- runWriter (runFresh (runReader (Root "elab") (runReader (mempty :: Context (Type Meta)) (runReader (fromMaybe Type ty) m))))
-  evalState (Seq.empty :: Seq.Seq Constraint) $ do
+  subst <- execState (Map.empty :: Map.Map Gensym (Value Meta)) . evalState (Seq.empty :: Seq.Seq Constraint) $ do
     stuck <- fmap fold . execState (Map.empty :: Map.Map Gensym (Set.Set Constraint)) $ do
-      modify (flip (foldl' (Seq.|>)) constraints)
-      pure ()
+      enqueueAll constraints
+      step
     unless (null stuck) $ fail ("stuck metavariables: " ++ show stuck)
-    let subst = Map.empty
-    val' <- substitute subst val
-    ty' <- substitute subst ty
-    pure (val' ::: ty')
-  where substitute subst = traverse $ \case
-          Name n -> pure n
-          Meta m -> maybe (fail ("unsolved metavariable " ++ show m)) pure (Map.lookup m subst)
+  val' <- substTy subst val
+  ty' <- substTy subst ty
+  pure (val' ::: ty')
+
+step :: (Carrier sig m, Member (State Blocked) sig, Member (State Queue) sig, Member (State Substitution) sig, MonadFail m) => m ()
+step = dequeue >>= \case
+  Just c@(_ :|-: tm1 ::: ty1 :===: tm2 ::: ty2) -> do
+    _S <- get
+    case c of
+      _ | s <- Map.restrictKeys _S (metaNames (fvs c)), not (null s) -> simplify (applyConstraint s c) >>= enqueueAll
+        | Just (m, sp) <- pattern ty1 -> solve (m := Type.lams sp ty2)
+        | Just (m, sp) <- pattern ty2 -> solve (m := Type.lams sp ty1)
+        | Just (m, sp) <- pattern tm1 -> solve (m := Type.lams sp tm2)
+        | Just (m, sp) <- pattern tm2 -> solve (m := Type.lams sp tm1)
+        | otherwise -> block c
+    step
+  Nothing -> pure ()
+
+block :: (Carrier sig m, Member (State Blocked) sig, MonadFail m) => Constraint -> m ()
+block c = do
+  let s = Set.singleton c
+      mvars = metaNames (fvs c)
+  when (null mvars) $ fail ("cannot block constraint without metavars: " ++ show c)
+  modify (Map.unionWith (<>) (foldl' (\ m i -> Map.insertWith (<>) i s m) mempty mvars))
+
+enqueueAll :: (Carrier sig m, Member (State Queue) sig, Foldable t) => t Constraint -> m ()
+enqueueAll = modify . flip (foldl' (Seq.|>))
+
+dequeue :: (Carrier sig m, Member (State Queue) sig) => m (Maybe Constraint)
+dequeue = gets Seq.viewl >>= \case
+  Seq.EmptyL -> pure Nothing
+  h Seq.:< q -> Just h <$ put q
+
+pattern :: Type Meta -> Maybe (Gensym, Stack Meta)
+pattern (Free (Meta m) :$ sp) = (,) m <$> traverse free sp
+pattern _                     = Nothing
+
+free :: Type a -> Maybe a
+free (Free v :$ Nil) = Just v
+free _               = Nothing
+
+solve :: (Carrier sig m, Member (State Blocked) sig, Member (State Queue) sig, Member (State Substitution) sig) => Solution -> m ()
+solve (m := v) = do
+  modify (Map.insert m v)
+  cs <- gets (fromMaybe Set.empty . Map.lookup m)
+  enqueueAll cs
+  modify (Map.delete m :: Blocked -> Blocked)
+
+applyConstraint :: Substitution -> Constraint -> Constraint
+applyConstraint subst (ctx :|-: tm1 ::: ty1 :===: tm2 ::: ty2) = applyContext subst ctx :|-: applyType subst tm1 ::: applyType subst ty1 :===: applyType subst tm2 ::: applyType subst ty2
+
+applyContext :: Substitution -> Context (Type Meta) -> Context (Type Meta)
+applyContext = fmap . applyType
+
+applyType :: Substitution -> Type Meta -> Type Meta
+applyType subst ty = ty >>= \case
+  Name n -> pure (Name n)
+  Meta m -> fromMaybe (pure (Meta m)) (Map.lookup m subst)
+
+substTy :: (Carrier sig m, MonadFail m) => Map.Map Gensym (Type Meta) -> Type Meta -> m (Type Name)
+substTy subst = fmap (fmap join) . traverse $ \case
+  Name n -> pure (pure n)
+  Meta m -> maybe (fail ("unsolved metavariable " ++ show m)) (substTy subst) (Map.lookup m subst)
+
+fvs :: Constraint -> Set.Set Meta
+fvs (ctx :|-: tm1 ::: ty1 :===: tm2 ::: ty2) = foldMap go ctx <> go tm1 <> go ty1 <> go tm2 <> go ty2
+  where go = foldMap Set.singleton
+
+metaNames :: Set.Set Meta -> Set.Set Gensym
+metaNames = foldMap $ \case
+  Meta m -> Set.singleton m
+  _      -> Set.empty
 
 simplify :: ( Carrier sig m
             , MonadFail m
