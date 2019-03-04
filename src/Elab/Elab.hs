@@ -87,11 +87,11 @@ lookupVar :: (Carrier sig m, Member (Reader (Context ty)) sig, MonadFail m) => N
 lookupVar v = asks (Map.lookup v) >>= maybe (fail ("Variable not in scope: " <> show v)) pure
 
 
-runInfer :: Context (Type Name) -> Infer a -> Either String a
-runInfer sig = run . runFail . runFresh . runReader (Root "root") . runReader sig  . unInfer
+runInfer :: Infer a -> Either String a
+runInfer = run . runFail . runFresh . runReader (Root "root") . runReader mempty  . unInfer
 
-runCheck :: Context (Type Name) -> Type Name -> Check a -> Either String a
-runCheck sig ty = runInfer sig . ascribe ty
+runCheck :: Type Name -> Check a -> Either String a
+runCheck ty = runInfer . ascribe ty
 
 
 newtype Elab a = Elab { unElab :: ReaderC (Type Meta) (ReaderC (Context (Type Meta)) (WriterC (Set.Set Constraint) (ReaderC Gensym (FreshC (FailC VoidC))))) a }
