@@ -199,8 +199,8 @@ runElab ty m = run . runFail . runFresh . runReader (Root "elab") $ do
   pure (val' ::: ty')
 
 solver :: (Carrier sig m, Effect sig, Member Fresh sig, Member (Reader Gensym) sig, MonadFail m) => Set.Set Constraint -> m Substitution
-solver constraints = execState Map.empty . evalState (Seq.empty :: Seq.Seq Constraint) $ do
-  stuck <- fmap fold . execState (Map.empty :: Map.Map Gensym (Set.Set Constraint)) $ do
+solver constraints = execState Map.empty . evalState (Seq.empty :: Queue) $ do
+  stuck <- fmap fold . execState (Map.empty :: Blocked) $ do
     enqueueAll constraints
     step
   unless (null stuck) $ fail ("stuck constraints: " ++ show stuck)
