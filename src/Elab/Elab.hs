@@ -189,7 +189,7 @@ infix 5 :=
 runElab :: Maybe (Type Meta) -> Elab (Value Meta ::: Type Meta) -> Either String (Value Name ::: Type Name)
 runElab ty m = run . runFail . runFresh . runReader (Root "elab") $ do
   ty' <- maybe (pure . Meta <$> gensym "meta") pure ty
-  (constraints, res) <- runWriter . runReader (mempty :: Context (Type Meta)) . runReader ty' . unElab $ do
+  (constraints, res) <- runWriter . runReader mempty . runReader ty' . unElab $ do
     val <- exists ty'
     m' <- m
     m' <$ unify (m' :===: val)
