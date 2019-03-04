@@ -179,6 +179,11 @@ type Blocked = Map.Map Gensym (Set.Set Constraint)
 type Substitution = Map.Map Gensym (Value Meta)
 type Queue = Seq.Seq Constraint
 
+data Solution
+  = Gensym := Value Meta
+  deriving (Eq, Ord, Show)
+
+infix 5 :=
 
 runElab :: Maybe (Type Meta) -> Elab (Value Meta ::: Type Meta) -> Either String (Value Name ::: Type Name)
 runElab ty (Elab m) = run . runFail $ do
