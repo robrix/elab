@@ -22,117 +22,45 @@ import Prelude hiding (fail)
 type Context = Map.Map Name
 type Value = Type
 
-newtype Check a = Check { unCheck :: ReaderC (Type Name) (ReaderC (Context (Type Name)) (ReaderC Gensym (FreshC (FailC VoidC)))) a }
-  deriving (Applicative, Functor, Monad, MonadFail)
-
-newtype Infer a = Infer { unInfer :: ReaderC (Context (Type Name)) (ReaderC Gensym (FreshC (FailC VoidC))) a }
-  deriving (Applicative, Functor, Monad, MonadFail)
-
-assume :: Name -> Infer (Value Name ::: Type Name)
-assume v = (pure v :::) <$> Infer (lookupVar v)
-
-intro :: (Name -> Check (Value Name ::: Type Name)) -> Check (Value Name ::: Type Name)
-intro body = do
-  expected <- goal
-  case expected of
-    Pi t b -> Check $ do
-      x <- Local <$> gensym "intro"
-      b' ::: bT <- x ::: t |- unCheck (goalIs (Type.instantiate (pure x) b) (body x))
-      pure (Type.lam x b' ::: Type.pi (x ::: t) bT)
-    _ -> fail ("expected function type, got " <> show expected)
-
-type' :: Infer (Value Name ::: Type Name)
-type' = pure (Type ::: Type)
-
-pi :: Check (Value Name ::: Type Name) -> (Name -> Check (Value Name ::: Type Name)) -> Infer (Value Name ::: Type Name)
-pi t body = do
-  t' ::: _ <- ascribe Type t
-  x <- Infer (Local <$> gensym "pi")
-  body' ::: _ <- Infer (x ::: t' |- unInfer (ascribe Type (body x)))
-  pure (Type.pi (x ::: t') body' ::: Type)
-
-($$) :: Infer (Value Name ::: Type Name) -> Check (Value Name ::: Type Name) -> Infer (Value Name ::: Type Name)
-f $$ a = do
-  f' ::: fT <- f
-  case fT of
-    Pi t b -> do
-      a' ::: aT <- ascribe t a
-      pure (f' Type.$$ a' ::: Type.instantiate aT b)
-    _ -> fail ("expected function type, got " <> show f')
-
-ascribe :: Type Name -> Check a -> Infer a
-ascribe ty = Infer . runReader ty . unCheck
-
-switch :: Infer (Value Name ::: Type Name) -> Check (Value Name ::: Type Name)
-switch m = do
-  expected <- goal
-  val ::: actual <- Check (ReaderC (const (unInfer m)))
-  unless (expected == actual) $
-    fail ("expected: " <> show expected <> "\n  actual: " <> show actual)
-  pure (val ::: actual)
-
-goal :: Check (Type Name)
-goal = Check ask
-
-goalIs :: Type Name -> Check a -> Check a
-goalIs ty = Check . local (const ty) . unCheck
-
-
-(|-) :: (Carrier sig m, Member (Reader (Context (Type Name))) sig) => Name ::: Type Name -> m a -> m a
-a ::: ty |- m = local (Map.insert a ty) m
-
-infix 5 |-
-
-lookupVar :: (Carrier sig m, Member (Reader (Context ty)) sig, MonadFail m) => Name -> m ty
-lookupVar v = asks (Map.lookup v) >>= maybe (fail ("Variable not in scope: " <> show v)) pure
-
-
-runInfer :: Infer a -> Either String a
-runInfer = run . runFail . runFresh . runReader (Root "root") . runReader mempty  . unInfer
-
-runCheck :: Type Name -> Check a -> Either String a
-runCheck ty = runInfer . ascribe ty
-
-
 newtype Elab a = Elab { unElab :: ReaderC (Type Meta) (ReaderC (Context (Type Meta)) (WriterC (Set.Set Constraint) (ReaderC Gensym (FreshC (FailC VoidC))))) a }
   deriving (Applicative, Functor, Monad, MonadFail)
 
-assume' :: Name -> Elab (Value Meta ::: Type Meta)
-assume' v = do
-  res <- goal' >>= exists
+assume :: Name -> Elab (Value Meta ::: Type Meta)
+assume v = do
+  res <- goal >>= exists
   _A <- Elab (lookupVar v)
   res <$ unify (pure (Name v) ::: _A :===: res)
 
-intro' :: (Name -> Elab (Value Meta ::: Type Meta)) -> Elab (Value Meta ::: Type Meta)
-intro' body = do
-  res <- goal' >>= exists
+intro :: (Name -> Elab (Value Meta ::: Type Meta)) -> Elab (Value Meta ::: Type Meta)
+intro body = do
+  res <- goal >>= exists
   _A ::: _ <- exists Type
   x <- freshName "intro"
-  _B ::: _ <- x ::: _A ||- exists Type
-  u ::: _ <- x ::: _A ||- goalIs' _B (body x)
+  _B ::: _ <- x ::: _A |- exists Type
+  u ::: _ <- x ::: _A |- goalIs _B (body x)
   res <$ unify (Type.lam (Name x) u ::: Type.pi (Name x ::: _A) _B :===: res)
 
-type'' :: Elab (Value Meta ::: Type Meta)
-type'' = do
-  res <- goal' >>= exists
+type' :: Elab (Value Meta ::: Type Meta)
+type' = do
+  res <- goal >>= exists
   res <$ unify (Type ::: Type :===: res)
 
-pi' :: Elab (Value Meta ::: Type Meta) -> (Name -> Elab (Value Meta ::: Type Meta)) -> Elab (Value Meta ::: Type Meta)
-pi' t body = do
-  res <- goal' >>= exists
-  t' ::: _ <- goalIs' Type t
+pi :: Elab (Value Meta ::: Type Meta) -> (Name -> Elab (Value Meta ::: Type Meta)) -> Elab (Value Meta ::: Type Meta)
+pi t body = do
+  res <- goal >>= exists
+  t' ::: _ <- goalIs Type t
   x <- freshName "pi"
-  b' ::: _ <- x ::: t' ||- goalIs' Type (body x)
+  b' ::: _ <- x ::: t' |- goalIs Type (body x)
   res <$ unify (Type.pi (Name x ::: t') b' ::: Type :===: res)
 
-($$$) :: Elab (Value Meta ::: Type Meta) -> Elab (Value Meta ::: Type Meta) -> Elab (Value Meta ::: Type Meta)
-f $$$ a = do
-  res <- goal' >>= exists
+($$) :: Elab (Value Meta ::: Type Meta) -> Elab (Value Meta ::: Type Meta) -> Elab (Value Meta ::: Type Meta)
+f $$ a = do
+  res <- goal >>= exists
   _A ::: _ <- exists Type
   _B ::: _ <- exists Type
   x <- freshName "$$"
-  f' ::: _ <- goalIs' (Type.pi (Name x ::: _A) _B) f
-  a' ::: _ <- goalIs' _A a
+  f' ::: _ <- goalIs (Type.pi (Name x ::: _A) _B) f
+  a' ::: _ <- goalIs _A a
   res <$ unify (f' Type.$$ a' ::: _B :===: res)
 
 
@@ -149,19 +77,22 @@ exists ty = do
   n <- Elab (Meta <$> gensym "meta")
   pure (pure n Type.$$* map (pure . Name) (Map.keys (ctx :: Context (Type Meta))) ::: ty)
 
-goal' :: Elab (Type Meta)
-goal' = Elab ask
+goal :: Elab (Type Meta)
+goal = Elab ask
 
-goalIs' :: Type Meta -> Elab a -> Elab a
-goalIs' ty (Elab m) = Elab (local (const ty) m)
+goalIs :: Type Meta -> Elab a -> Elab a
+goalIs ty (Elab m) = Elab (local (const ty) m)
 
-(||-) :: Name ::: Type Meta -> Elab a -> Elab a
-a ::: ty ||- Elab m = Elab (local (Map.insert a ty) m)
+(|-) :: Name ::: Type Meta -> Elab a -> Elab a
+a ::: ty |- Elab m = Elab (local (Map.insert a ty) m)
 
-infix 5 ||-
+infix 5 |-
 
 unify :: Equation (Value Meta ::: Type Meta) -> Elab ()
 unify constraint = context >>= Elab . tell . Set.singleton . (:|-: constraint)
+
+lookupVar :: (Carrier sig m, Member (Reader (Context ty)) sig, MonadFail m) => Name -> m ty
+lookupVar v = asks (Map.lookup v) >>= maybe (fail ("Variable not in scope: " <> show v)) pure
 
 
 data Equation a
