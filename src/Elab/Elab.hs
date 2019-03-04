@@ -188,7 +188,8 @@ infix 5 :=
 
 runElab :: Maybe (Type Meta) -> Elab (Value Meta ::: Type Meta) -> Either String (Value Name ::: Type Name)
 runElab ty (Elab m) = run . runFail . runFresh . runReader (Root "elab") $ do
-  (constraints, val ::: ty) <- runWriter (runReader (mempty :: Context (Type Meta)) (runReader (fromMaybe Type ty) m))
+  mTy <- Name . Local <$> gensym "meta"
+  (constraints, val ::: ty) <- runWriter (runReader (mempty :: Context (Type Meta)) (runReader (fromMaybe (pure mTy) ty) m))
   subst <- execState (Map.empty :: Map.Map Gensym (Value Meta)) . evalState (Seq.empty :: Seq.Seq Constraint) $ do
     stuck <- fmap fold . execState (Map.empty :: Map.Map Gensym (Set.Set Constraint)) $ do
       enqueueAll constraints
