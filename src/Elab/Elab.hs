@@ -197,11 +197,13 @@ runElab ty m = run . runFail . runFresh . runReader (Root "elab") $ do
   substTyped subst res
 
 solver :: (Carrier sig m, Effect sig, Member Fresh sig, Member (Reader Gensym) sig, MonadFail m) => Set.Set Constraint -> m Substitution
-solver constraints = execState Map.empty . evalState (Seq.empty :: Queue) $ do
-  stuck <- fmap fold . execState (Map.empty :: Blocked) $ do
-    enqueueAll constraints
-    step
-  unless (null stuck) $ fail ("stuck constraints: " ++ show stuck)
+solver constraints = execState Map.empty $ do
+  queue <- execState (Seq.empty :: Queue) $ do
+    stuck <- fmap fold . execState (Map.empty :: Blocked) $ do
+      enqueueAll constraints
+      step
+    unless (null stuck) $ fail ("stuck constraints: " ++ show stuck)
+  unless (null queue) $ fail ("stalled constraints: " ++ show queue)
 
 step :: (Carrier sig m, Effect sig, Member Fresh sig, Member (Reader Gensym) sig, Member (State Blocked) sig, Member (State Queue) sig, Member (State Substitution) sig, MonadFail m) => m ()
 step = dequeue >>= \case
