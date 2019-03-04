@@ -193,14 +193,17 @@ runElab ty m = run . runFail . runFresh . runReader (Root "elab") $ do
     val <- exists ty'
     m' <- m
     m' <$ unify (m' :===: val)
-  subst <- execState (Map.empty :: Map.Map Gensym (Value Meta)) . evalState (Seq.empty :: Seq.Seq Constraint) $ do
-    stuck <- fmap fold . execState (Map.empty :: Map.Map Gensym (Set.Set Constraint)) $ do
-      enqueueAll constraints
-      step
-    unless (null stuck) $ fail ("stuck constraints: " ++ show stuck)
+  subst <- solver constraints
   val' <- substTy subst val
   ty' <- substTy subst ty
   pure (val' ::: ty')
+
+solver :: (Carrier sig m, Effect sig, Member Fresh sig, Member (Reader Gensym) sig, MonadFail m) => Set.Set Constraint -> m Substitution
+solver constraints = execState (Map.empty :: Map.Map Gensym (Value Meta)) . evalState (Seq.empty :: Seq.Seq Constraint) $ do
+  stuck <- fmap fold . execState (Map.empty :: Map.Map Gensym (Set.Set Constraint)) $ do
+    enqueueAll constraints
+    step
+  unless (null stuck) $ fail ("stuck constraints: " ++ show stuck)
 
 step :: (Carrier sig m, Effect sig, Member Fresh sig, Member (Reader Gensym) sig, Member (State Blocked) sig, Member (State Queue) sig, Member (State Substitution) sig, MonadFail m) => m ()
 step = dequeue >>= \case
