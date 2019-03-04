@@ -279,11 +279,17 @@ simplify :: ( Carrier sig m
             )
          => Constraint
          -> m (Set.Set Constraint)
-simplify (_ :|-: c) = execWriter (go c)
+simplify (ctx :|-: c) = execWriter (go c)
   where go = \case
           tm1 ::: ty1 :===: tm2 ::: ty2 | tm1 == tm2, ty1 == ty2 -> pure ()
           Pi t1 b1 ::: Type :===: Pi t2 b2 ::: Type -> do
             go (t1 ::: Type :===: t2 ::: Type)
             n <- Name . Local <$> gensym "simplify"
             go (Type.instantiate (pure n) b1 ::: Type :===: Type.instantiate (pure n) b2 ::: Type)
-          c -> fail ("unsimplifiable constraint: " ++ show c)
+          c@(t1 :===: t2)
+            | stuck t1 || stuck t2 -> tell (Set.singleton (ctx :|-: c))
+            | otherwise            -> fail ("unsimplifiable constraint: " ++ show c)
+
+        stuck (v ::: ty) = stuckType v || stuckType ty
+        stuckType (Free (Meta _) :$ _) = True
+        stuckType _                    = False
