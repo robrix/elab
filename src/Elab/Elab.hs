@@ -189,14 +189,12 @@ infix 5 :=
 runElab :: Maybe (Type Meta) -> Elab (Value Meta ::: Type Meta) -> Either String (Value Name ::: Type Name)
 runElab ty m = run . runFail . runFresh . runReader (Root "elab") $ do
   ty' <- maybe (pure . Meta <$> gensym "meta") pure ty
-  (constraints, val ::: ty) <- runWriter . runReader (mempty :: Context (Type Meta)) . runReader ty' . unElab $ do
+  (constraints, res) <- runWriter . runReader (mempty :: Context (Type Meta)) . runReader ty' . unElab $ do
     val <- exists ty'
     m' <- m
     m' <$ unify (m' :===: val)
   subst <- solver constraints
-  val' <- substTy subst val
-  ty' <- substTy subst ty
-  pure (val' ::: ty')
+  substTyped subst res
 
 solver :: (Carrier sig m, Effect sig, Member Fresh sig, Member (Reader Gensym) sig, MonadFail m) => Set.Set Constraint -> m Substitution
 solver constraints = execState Map.empty . evalState (Seq.empty :: Queue) $ do
@@ -259,6 +257,9 @@ applyType :: Substitution -> Type Meta -> Type Meta
 applyType subst ty = ty >>= \case
   Name n -> pure (Name n)
   Meta m -> fromMaybe (pure (Meta m)) (Map.lookup m subst)
+
+substTyped :: (Carrier sig m, MonadFail m) => Map.Map Gensym (Type Meta) -> Value Meta ::: Type Meta -> m (Value Name ::: Type Name)
+substTyped subst (val ::: ty) = (:::) <$> substTy subst val <*> substTy subst ty
 
 substTy :: (Carrier sig m, MonadFail m) => Map.Map Gensym (Type Meta) -> Type Meta -> m (Type Name)
 substTy subst = fmap (fmap join) . traverse $ \case
