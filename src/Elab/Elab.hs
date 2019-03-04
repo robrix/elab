@@ -197,7 +197,7 @@ runElab ty m = run . runFail . runFresh . runReader (Root "elab") $ do
     stuck <- fmap fold . execState (Map.empty :: Map.Map Gensym (Set.Set Constraint)) $ do
       enqueueAll constraints
       step
-    unless (null stuck) $ fail ("stuck metavariables: " ++ show stuck)
+    unless (null stuck) $ fail ("stuck constraints: " ++ show stuck)
   val' <- substTy subst val
   ty' <- substTy subst ty
   pure (val' ::: ty')
