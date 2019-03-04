@@ -198,7 +198,7 @@ runElab ty (Elab m) = run . runFail . runFresh . runReader (Root "elab") $ do
   ty' <- substTy subst ty
   pure (val' ::: ty')
 
-step :: (Carrier sig m, Member (State Blocked) sig, Member (State Queue) sig, Member (State Substitution) sig, MonadFail m) => m ()
+step :: (Carrier sig m, Effect sig, Member Fresh sig, Member (Reader Gensym) sig, Member (State Blocked) sig, Member (State Queue) sig, Member (State Substitution) sig, MonadFail m) => m ()
 step = dequeue >>= \case
   Just c@(_ :|-: tm1 ::: ty1 :===: tm2 ::: ty2) -> do
     _S <- get
@@ -268,11 +268,18 @@ metaNames = foldMap $ \case
   _      -> Set.empty
 
 simplify :: ( Carrier sig m
+            , Effect sig
+            , Member Fresh sig
+            , Member (Reader Gensym) sig
             , MonadFail m
             )
          => Constraint
          -> m (Set.Set Constraint)
 simplify = execWriter . go
   where go = \case
-          _ :|-: tm1 ::: ty1 :===: tm2 ::: ty2 | tm1 == tm2, ty1 == ty2 -> pure ()
+          _   :|-: tm1 ::: ty1 :===: tm2 ::: ty2 | tm1 == tm2, ty1 == ty2 -> pure ()
+          ctx :|-: Pi t1 b1 ::: Type :===: Pi t2 b2 ::: Type -> do
+            go (ctx :|-: t1 ::: Type :===: t2 ::: Type)
+            n <- Name . Local <$> gensym "simplify"
+            go (ctx :|-: Type.instantiate (pure n) b1 ::: Type :===: Type.instantiate (pure n) b2 ::: Type)
           c -> fail ("unsimplifiable constraint: " ++ show c)
