@@ -197,10 +197,6 @@ runElab ty (Elab m) = run . runFail $ do
           Meta m -> maybe (fail ("unsolved metavariable " ++ show m)) pure (Map.lookup m subst)
 
 simplify :: ( Carrier sig m
-            , Effect sig
-            , Member Fresh sig
-            , Member (Reader (Context (Type Meta))) sig
-            , Member (Reader Gensym) sig
             , MonadFail m
             )
          => Constraint
