@@ -275,11 +275,11 @@ simplify :: ( Carrier sig m
             )
          => Constraint
          -> m (Set.Set Constraint)
-simplify = execWriter . go
+simplify (_ :|-: c) = execWriter (go c)
   where go = \case
-          _   :|-: tm1 ::: ty1 :===: tm2 ::: ty2 | tm1 == tm2, ty1 == ty2 -> pure ()
-          ctx :|-: Pi t1 b1 ::: Type :===: Pi t2 b2 ::: Type -> do
-            go (ctx :|-: t1 ::: Type :===: t2 ::: Type)
+          tm1 ::: ty1 :===: tm2 ::: ty2 | tm1 == tm2, ty1 == ty2 -> pure ()
+          Pi t1 b1 ::: Type :===: Pi t2 b2 ::: Type -> do
+            go (t1 ::: Type :===: t2 ::: Type)
             n <- Name . Local <$> gensym "simplify"
-            go (ctx :|-: Type.instantiate (pure n) b1 ::: Type :===: Type.instantiate (pure n) b2 ::: Type)
+            go (Type.instantiate (pure n) b1 ::: Type :===: Type.instantiate (pure n) b2 ::: Type)
           c -> fail ("unsimplifiable constraint: " ++ show c)
