@@ -94,7 +94,7 @@ runCheck' :: Context (Type Name) -> Type Name -> Check a -> Either String a
 runCheck' sig ty = runInfer' sig . ascribe ty
 
 
-newtype Elab a = Elab (ReaderC (Type Meta) (ReaderC (Context (Type Meta)) (ReaderC Gensym (FreshC (WriterC (Set.Set Constraint) (FailC VoidC))))) a)
+newtype Elab a = Elab (ReaderC (Type Meta) (ReaderC (Context (Type Meta)) (WriterC (Set.Set Constraint) (ReaderC Gensym (FreshC (FailC VoidC))))) a)
   deriving (Applicative, Functor, Monad, MonadFail)
 
 assume' :: Name -> Elab (Value Meta ::: Type Meta)
@@ -187,8 +187,8 @@ data Solution
 infix 5 :=
 
 runElab :: Maybe (Type Meta) -> Elab (Value Meta ::: Type Meta) -> Either String (Value Name ::: Type Name)
-runElab ty (Elab m) = run . runFail $ do
-  (constraints, val ::: ty) <- runWriter (runFresh (runReader (Root "elab") (runReader (mempty :: Context (Type Meta)) (runReader (fromMaybe Type ty) m))))
+runElab ty (Elab m) = run . runFail . runFresh . runReader (Root "elab") $ do
+  (constraints, val ::: ty) <- runWriter (runReader (mempty :: Context (Type Meta)) (runReader (fromMaybe Type ty) m))
   subst <- execState (Map.empty :: Map.Map Gensym (Value Meta)) . evalState (Seq.empty :: Seq.Seq Constraint) $ do
     stuck <- fmap fold . execState (Map.empty :: Map.Map Gensym (Set.Set Constraint)) $ do
       enqueueAll constraints
