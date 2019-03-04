@@ -175,6 +175,10 @@ data Contextual a = Context (Type Meta) :|-: a
 infixr 1 :|-:
 
 type Constraint = Contextual (Equation (Value Meta ::: Type Meta))
+type Blocked = Map.Map Gensym (Set.Set Constraint)
+type Substitution = Map.Map Gensym (Value Meta)
+type Queue = Seq.Seq Constraint
+
 
 runElab :: Maybe (Type Meta) -> Elab (Value Meta ::: Type Meta) -> Either String (Value Name ::: Type Name)
 runElab ty (Elab m) = run . runFail $ do
