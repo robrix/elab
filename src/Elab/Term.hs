@@ -63,3 +63,7 @@ instance Monad Term where
   a >>= f = substIn (const (\case
     Free a' -> f a'
     Bound i -> Head (Bound i))) a
+
+
+identity :: Term Name
+identity = lam (Local (Root "x")) (lam (Local (Root "y")) (pure (Local (Root "y"))))
