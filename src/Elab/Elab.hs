@@ -22,7 +22,7 @@ import Prelude hiding (fail)
 type Context = Map.Map Name
 type Value = Type
 
-newtype Elab a = Elab { unElab :: ReaderC (Type Meta) (ReaderC (Context (Type Meta)) (WriterC (Set.Set Constraint) (ReaderC Gensym (FreshC (FailC VoidC))))) a }
+newtype Elab a = Elab { unElab :: ReaderC (Type Meta) (ReaderC (Context (Type Meta)) (WriterC (Set.Set HetConstraint) (ReaderC Gensym (FreshC (FailC VoidC))))) a }
   deriving (Applicative, Functor, Monad, MonadFail)
 
 assume :: Name -> Elab (Value Meta ::: Type Meta)
@@ -106,10 +106,10 @@ data Contextual a = Context (Type Meta) :|-: a
 
 infixr 1 :|-:
 
-type Constraint = Contextual (Equation (Value Meta ::: Type Meta))
-type Blocked = Map.Map Gensym (Set.Set Constraint)
+type HetConstraint = Contextual (Equation (Value Meta ::: Type Meta))
+type Blocked = Map.Map Gensym (Set.Set HetConstraint)
 type Substitution = Map.Map Gensym (Value Meta)
-type Queue = Seq.Seq Constraint
+type Queue = Seq.Seq HetConstraint
 
 data Solution
   = Gensym := Value Meta
@@ -127,7 +127,7 @@ runElab ty m = run . runFail . runFresh . runReader (Root "elab") $ do
   subst <- solver constraints
   substTyped subst res
 
-solver :: (Carrier sig m, Effect sig, Member Fresh sig, Member (Reader Gensym) sig, MonadFail m) => Set.Set Constraint -> m Substitution
+solver :: (Carrier sig m, Effect sig, Member Fresh sig, Member (Reader Gensym) sig, MonadFail m) => Set.Set HetConstraint -> m Substitution
 solver constraints = execState Map.empty $ do
   queue <- execState (Seq.empty :: Queue) $ do
     stuck <- fmap fold . execState (Map.empty :: Blocked) $ do
@@ -141,7 +141,7 @@ step = do
   _S <- get
   dequeue >>= maybe (pure ()) (process _S >=> const step)
 
-process :: (Carrier sig m, Effect sig, Member Fresh sig, Member (Reader Gensym) sig, Member (State Blocked) sig, Member (State Queue) sig, Member (State Substitution) sig, MonadFail m) => Substitution -> Constraint -> m ()
+process :: (Carrier sig m, Effect sig, Member Fresh sig, Member (Reader Gensym) sig, Member (State Blocked) sig, Member (State Queue) sig, Member (State Substitution) sig, MonadFail m) => Substitution -> HetConstraint -> m ()
 process _S c@(_ :|-: tm1 ::: ty1 :===: tm2 ::: ty2)
   | s <- Map.restrictKeys _S (metaNames (fvs c)), not (null s) = simplify (applyConstraint s c) >>= enqueueAll
   | Just (m, sp) <- pattern ty1 = solve (m := Type.lams sp ty2) >> get >>= \ _S -> process _S c
@@ -150,17 +150,17 @@ process _S c@(_ :|-: tm1 ::: ty1 :===: tm2 ::: ty2)
   | Just (m, sp) <- pattern tm2 = solve (m := Type.lams sp tm1) >> get >>= \ _S -> process _S c
   | otherwise = block c
 
-block :: (Carrier sig m, Member (State Blocked) sig, MonadFail m) => Constraint -> m ()
+block :: (Carrier sig m, Member (State Blocked) sig, MonadFail m) => HetConstraint -> m ()
 block c = do
   let s = Set.singleton c
       mvars = metaNames (fvs c)
   when (null mvars) $ fail ("cannot block constraint without metavars: " ++ show c)
   modify (Map.unionWith (<>) (foldl' (\ m i -> Map.insertWith (<>) i s m) mempty mvars))
 
-enqueueAll :: (Carrier sig m, Member (State Queue) sig, Foldable t) => t Constraint -> m ()
+enqueueAll :: (Carrier sig m, Member (State Queue) sig, Foldable t) => t HetConstraint -> m ()
 enqueueAll = modify . flip (foldl' (Seq.|>))
 
-dequeue :: (Carrier sig m, Member (State Queue) sig) => m (Maybe Constraint)
+dequeue :: (Carrier sig m, Member (State Queue) sig) => m (Maybe HetConstraint)
 dequeue = gets Seq.viewl >>= \case
   Seq.EmptyL -> pure Nothing
   h Seq.:< q -> Just h <$ put q
@@ -180,7 +180,7 @@ solve (m := v) = do
   enqueueAll cs
   modify (Map.delete m :: Blocked -> Blocked)
 
-applyConstraint :: Substitution -> Constraint -> Constraint
+applyConstraint :: Substitution -> HetConstraint -> HetConstraint
 applyConstraint subst (ctx :|-: tm1 ::: ty1 :===: tm2 ::: ty2) = applyContext subst ctx :|-: applyType subst tm1 ::: applyType subst ty1 :===: applyType subst tm2 ::: applyType subst ty2
 
 applyContext :: Substitution -> Context (Type Meta) -> Context (Type Meta)
@@ -199,7 +199,7 @@ substTy subst = fmap (fmap join) . traverse $ \case
   Name n -> pure (pure n)
   Meta m -> maybe (fail ("unsolved metavariable " ++ show m)) (substTy subst) (Map.lookup m subst)
 
-fvs :: Constraint -> Set.Set Meta
+fvs :: HetConstraint -> Set.Set Meta
 fvs (ctx :|-: tm1 ::: ty1 :===: tm2 ::: ty2) = foldMap go ctx <> go tm1 <> go ty1 <> go tm2 <> go ty2
   where go = foldMap Set.singleton
 
@@ -214,8 +214,8 @@ simplify :: ( Carrier sig m
             , Member (Reader Gensym) sig
             , MonadFail m
             )
-         => Constraint
-         -> m (Set.Set Constraint)
+         => HetConstraint
+         -> m (Set.Set HetConstraint)
 simplify (ctx :|-: c) = execWriter (go c)
   where go = \case
           tm1 ::: ty1 :===: tm2 ::: ty2 | tm1 == tm2, ty1 == ty2 -> pure ()
