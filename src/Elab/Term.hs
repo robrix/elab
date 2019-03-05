@@ -65,5 +65,8 @@ instance Monad Term where
     Bound i -> Head (Bound i))) a
 
 
+identityT :: Term Name
+identityT = pi (Local (Root "x") ::: Type) (pi (Local (Root "y") ::: pure (Local (Root "x"))) (pure (Local (Root "y"))))
+
 identity :: Term Name
 identity = lam (Local (Root "x")) (lam (Local (Root "y")) (pure (Local (Root "y"))))
