@@ -231,3 +231,10 @@ simplify (ctx :|-: c) = execWriter (go c)
         stuck (v ::: ty) = stuckType v || stuckType ty
         stuckType (Free (Meta _) :$ _) = True
         stuckType _                    = False
+
+hetToHom :: HetConstraint -> (HomConstraint, HomConstraint)
+hetToHom (ctx :|-: tm1 ::: ty1 :===: tm2 ::: ty2) =
+  -- FIXME: represent dependency of second on first
+  ( ctx :|-: (ty1 :===: ty2) ::: Type
+  , ctx :|-: (tm1 :===: tm2) ::: ty1
+  )
