@@ -107,6 +107,7 @@ data Contextual a = Context (Type Meta) :|-: a
 infixr 1 :|-:
 
 type HetConstraint = Contextual (Equation (Value Meta ::: Type Meta))
+type HomConstraint = Contextual (Equation (Value Meta) ::: Type Meta)
 type Blocked = Map.Map Gensym (Set.Set HetConstraint)
 type Substitution = Map.Map Gensym (Value Meta)
 type Queue = Seq.Seq HetConstraint
