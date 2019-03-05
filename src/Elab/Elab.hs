@@ -7,7 +7,7 @@ import Control.Effect.Fresh
 import Control.Effect.Reader hiding (Local)
 import Control.Effect.State
 import Control.Effect.Writer
-import Control.Monad (join, unless, when)
+import Control.Monad ((>=>), join, unless, when)
 import Data.Foldable (fold, foldl')
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
@@ -137,18 +137,18 @@ solver constraints = execState Map.empty $ do
   unless (null queue) $ fail ("stalled constraints: " ++ show queue)
 
 step :: (Carrier sig m, Effect sig, Member Fresh sig, Member (Reader Gensym) sig, Member (State Blocked) sig, Member (State Queue) sig, Member (State Substitution) sig, MonadFail m) => m ()
-step = dequeue >>= \case
-  Just c@(_ :|-: tm1 ::: ty1 :===: tm2 ::: ty2) -> do
-    _S <- get
-    case c of
-      _ | s <- Map.restrictKeys _S (metaNames (fvs c)), not (null s) -> simplify (applyConstraint s c) >>= enqueueAll
-        | Just (m, sp) <- pattern ty1 -> solve (m := Type.lams sp ty2)
-        | Just (m, sp) <- pattern ty2 -> solve (m := Type.lams sp ty1)
-        | Just (m, sp) <- pattern tm1 -> solve (m := Type.lams sp tm2)
-        | Just (m, sp) <- pattern tm2 -> solve (m := Type.lams sp tm1)
-        | otherwise -> block c
-    step
-  Nothing -> pure ()
+step = do
+  _S <- get
+  dequeue >>= maybe (pure ()) (process _S >=> const step)
+
+process :: (Carrier sig m, Effect sig, Member Fresh sig, Member (Reader Gensym) sig, Member (State Blocked) sig, Member (State Queue) sig, Member (State Substitution) sig, MonadFail m) => Substitution -> Constraint -> m ()
+process _S c@(_ :|-: tm1 ::: ty1 :===: tm2 ::: ty2)
+  | s <- Map.restrictKeys _S (metaNames (fvs c)), not (null s) = simplify (applyConstraint s c) >>= enqueueAll
+  | Just (m, sp) <- pattern ty1 = solve (m := Type.lams sp ty2)
+  | Just (m, sp) <- pattern ty2 = solve (m := Type.lams sp ty1)
+  | Just (m, sp) <- pattern tm1 = solve (m := Type.lams sp tm2)
+  | Just (m, sp) <- pattern tm2 = solve (m := Type.lams sp tm1)
+  | otherwise = block c
 
 block :: (Carrier sig m, Member (State Blocked) sig, MonadFail m) => Constraint -> m ()
 block c = do
