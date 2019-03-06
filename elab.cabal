@@ -19,6 +19,7 @@ library
   exposed-modules:     Elab.Check
                      , Elab.Elab
                      , Elab.Name
+                     , Elab.Pretty
                      , Elab.Stack
                      , Elab.Term
                      , Elab.Type
