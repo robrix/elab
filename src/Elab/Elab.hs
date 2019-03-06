@@ -94,7 +94,7 @@ unify :: Equation (Value Meta ::: Type Meta) -> Elab ()
 unify constraint = context >>= Elab . tell . Set.singleton . (:|-: constraint)
 
 lookupVar :: (Carrier sig m, Member (Reader (Context ty)) sig, MonadFail m) => Name -> m ty
-lookupVar v = asks (Map.lookup v) >>= maybe (fail ("Variable not in scope: " <> show v)) pure
+lookupVar v = asks (Map.lookup v) >>= maybe (fail ("Variable not in scope: " <> pretty v)) pure
 
 
 data Equation a
@@ -149,8 +149,8 @@ solver constraints = execState Map.empty $ do
     stuck <- fmap fold . execState (Map.empty :: Blocked) $ do
       enqueueAll constraints
       step
-    unless (null stuck) $ fail ("stuck constraints: " ++ show stuck)
-  unless (null queue) $ fail ("stalled constraints: " ++ show queue)
+    unless (null stuck) $ fail ("stuck constraints: " ++ pretty stuck)
+  unless (null queue) $ fail ("stalled constraints: " ++ pretty queue)
 
 step :: (Carrier sig m, Effect sig, Member Fresh sig, Member (Reader Gensym) sig, Member (State Blocked) sig, Member (State Queue) sig, Member (State Substitution) sig, MonadFail m) => m ()
 step = do
@@ -169,7 +169,7 @@ block :: (Carrier sig m, Member (State Blocked) sig, MonadFail m) => HomConstrai
 block c = do
   let s = Set.singleton c
       mvars = metaNames (fvs c)
-  when (null mvars) $ fail ("cannot block constraint without metavars: " ++ show c)
+  when (null mvars) $ fail ("cannot block constraint without metavars: " ++ pretty c)
   modify (Map.unionWith (<>) (foldl' (\ m i -> Map.insertWith (<>) i s m) mempty mvars))
 
 enqueueAll :: (Carrier sig m, Member (State Queue) sig, Foldable t) => t HomConstraint -> m ()
@@ -212,7 +212,7 @@ substTyped subst (val ::: ty) = (:::) <$> substTy subst val <*> substTy subst ty
 substTy :: (Carrier sig m, MonadFail m) => Map.Map Gensym (Type Meta) -> Type Meta -> m (Type Name)
 substTy subst = fmap (fmap join) . traverse $ \case
   Name n -> pure (pure n)
-  Meta m -> maybe (fail ("unsolved metavariable " ++ show m)) (substTy subst) (Map.lookup m subst)
+  Meta m -> maybe (fail ("unsolved metavariable " ++ pretty m)) (substTy subst) (Map.lookup m subst)
 
 fvs :: HomConstraint -> Set.Set Meta
 fvs (ctx :|-: (tm1 :===: tm2) ::: ty) = foldMap go ctx <> go tm1 <> go tm2 <> go ty
@@ -248,7 +248,7 @@ simplify = execWriter . go
             go (ctx :|-: (tm1 :===: tm2 Type.$$* sp) ::: ty)
           c@(_ :|-: (t1 :===: t2) ::: _)
             | stuck t1 || stuck t2 -> tell (Set.singleton c)
-            | otherwise            -> fail ("unsimplifiable constraint: " ++ show c)
+            | otherwise            -> fail ("unsimplifiable constraint: " ++ pretty c)
 
         stuck (Free (Meta _) :$ _) = True
         stuck _                    = False
