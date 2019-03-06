@@ -228,6 +228,10 @@ simplify (ctx :|-: c) = execWriter (go c)
             n <- Name . Local <$> gensym "simplify"
             -- FIXME: this should probably extend the context while simplifying the body
             go ((Type.instantiate (pure n) f1 :===: Type.instantiate (pure n) f2) ::: Type.instantiate (pure n) b)
+          (Free (Name n) :$ sp :===: tm2) ::: ty | Just tm1 <- Map.lookup n ctx -> do
+            go ((tm1 Type.$$* sp :===: tm2) ::: ty)
+          (tm1 :===: Free (Name n) :$ sp) ::: ty | Just tm2 <- Map.lookup n ctx -> do
+            go ((tm1 :===: tm2 Type.$$* sp) ::: ty)
           c@((t1 :===: t2) ::: _)
             | stuck t1 || stuck t2 -> tell (Set.singleton (ctx :|-: c))
             | otherwise            -> fail ("unsimplifiable constraint: " ++ show c)
