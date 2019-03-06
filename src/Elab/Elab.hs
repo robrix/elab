@@ -19,6 +19,7 @@ import Elab.Stack
 import Elab.Type (Type(..))
 import qualified Elab.Type as Type
 import Prelude hiding (fail)
+import Text.Show
 
 type Context = Map.Map Name
 type Value = Type
@@ -112,7 +113,8 @@ data Contextual a = Context (Type Meta) :|-: a
 infixr 1 :|-:
 
 instance Pretty a => Pretty (Contextual a) where
-  prettys (ctx :|-: a) = showString "Γ " . prettys ctx . showString " ⊢ " . prettys a
+  prettys (ctx :|-: a) = showString "Γ " . showListWith prettyBinding (Map.toList ctx) . showString " ⊢ " . prettys a
+    where prettyBinding (v, t) = prettys v . showString " : " . prettys t
 
 
 type HetConstraint = Contextual (Equation (Value Meta ::: Type Meta))
