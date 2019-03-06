@@ -1,6 +1,8 @@
 module Elab.Pretty where
 
+import Data.Foldable (toList)
 import qualified Data.Map as Map
+import qualified Data.Sequence as Seq
 import qualified Data.Set as Set
 import Text.Show
 
@@ -19,3 +21,6 @@ instance (Pretty k, Pretty v) => Pretty (Map.Map k v) where
 
 instance Pretty a => Pretty (Set.Set a) where
   prettys = showListWith prettys . Set.toList
+
+instance Pretty a => Pretty (Seq.Seq a) where
+  prettys = showListWith prettys . toList
