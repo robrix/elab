@@ -14,6 +14,7 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Sequence as Seq
 import qualified Data.Set as Set
 import Elab.Name
+import Elab.Pretty
 import Elab.Stack
 import Elab.Type (Type(..))
 import qualified Elab.Type as Type
@@ -117,6 +118,10 @@ data Solution
   deriving (Eq, Ord, Show)
 
 infix 5 :=
+
+instance Pretty Solution where
+  prettys (n := v) = prettys n . showString " := " . prettys v
+
 
 runElab :: Maybe (Type Meta) -> Elab (Value Meta ::: Type Meta) -> Either String (Value Name ::: Type Name)
 runElab ty m = run . runFail . runFresh . runReader (Root "elab") $ do
