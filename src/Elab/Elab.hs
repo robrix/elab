@@ -175,7 +175,7 @@ free _               = Nothing
 
 solve :: (Carrier sig m, Member (State Blocked) sig, Member (State Queue) sig, Member (State Substitution) sig) => Solution -> m ()
 solve (m := v) = do
-  modify (Map.insert m v)
+  modify (Map.insert m v . fmap (applyType (Map.singleton m v)))
   cs <- gets (fromMaybe Set.empty . Map.lookup m)
   enqueueAll cs
   modify (Map.delete m :: Blocked -> Blocked)
