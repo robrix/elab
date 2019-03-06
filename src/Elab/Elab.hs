@@ -216,24 +216,24 @@ simplify :: ( Carrier sig m
             )
          => HomConstraint
          -> m (Set.Set HomConstraint)
-simplify (ctx :|-: c) = execWriter (go c)
+simplify = execWriter . go
   where go = \case
-          (tm1 :===: tm2) ::: _ | tm1 == tm2 -> pure ()
-          (Pi t1 b1 :===: Pi t2 b2) ::: Type -> do
-            go ((t1 :===: t2) ::: Type)
+          ctx :|-: (tm1 :===: tm2) ::: _ | tm1 == tm2 -> pure ()
+          ctx :|-: (Pi t1 b1 :===: Pi t2 b2) ::: Type -> do
+            go (ctx :|-: (t1 :===: t2) ::: Type)
             n <- Name . Local <$> gensym "simplify"
             -- FIXME: this should probably extend the context while simplifying the body
-            go ((Type.instantiate (pure n) b1 :===: Type.instantiate (pure n) b2) ::: Type)
-          (Lam f1 :===: Lam f2) ::: Pi t b -> do
+            go (ctx :|-: (Type.instantiate (pure n) b1 :===: Type.instantiate (pure n) b2) ::: Type)
+          ctx :|-: (Lam f1 :===: Lam f2) ::: Pi t b -> do
             n <- Name . Local <$> gensym "simplify"
             -- FIXME: this should probably extend the context while simplifying the body
-            go ((Type.instantiate (pure n) f1 :===: Type.instantiate (pure n) f2) ::: Type.instantiate (pure n) b)
-          (Free (Name n) :$ sp :===: tm2) ::: ty | Just tm1 <- Map.lookup n ctx -> do
-            go ((tm1 Type.$$* sp :===: tm2) ::: ty)
-          (tm1 :===: Free (Name n) :$ sp) ::: ty | Just tm2 <- Map.lookup n ctx -> do
-            go ((tm1 :===: tm2 Type.$$* sp) ::: ty)
-          c@((t1 :===: t2) ::: _)
-            | stuck t1 || stuck t2 -> tell (Set.singleton (ctx :|-: c))
+            go (ctx :|-: (Type.instantiate (pure n) f1 :===: Type.instantiate (pure n) f2) ::: Type.instantiate (pure n) b)
+          ctx :|-: (Free (Name n) :$ sp :===: tm2) ::: ty | Just tm1 <- Map.lookup n ctx -> do
+            go (ctx :|-: (tm1 Type.$$* sp :===: tm2) ::: ty)
+          ctx :|-: (tm1 :===: Free (Name n) :$ sp) ::: ty | Just tm2 <- Map.lookup n ctx -> do
+            go (ctx :|-: (tm1 :===: tm2 Type.$$* sp) ::: ty)
+          c@(ctx :|-: (t1 :===: t2) ::: _)
+            | stuck t1 || stuck t2 -> tell (Set.singleton c)
             | otherwise            -> fail ("unsimplifiable constraint: " ++ show c)
 
         stuck (Free (Meta _) :$ _) = True
