@@ -19,8 +19,8 @@ instance Pretty a => Pretty (Type a) where
   prettys (h :$ Nil) = prettys h
   prettys (h :$ sp)  = prettys h . showChar ' ' . prettys (toList sp)
   prettys Type       = showString "Type"
-  prettys (Lam b)    = showString "λ" . prettys b
-  prettys (Pi t b)   = showString "π" . prettys t . showString " -> " . prettys b
+  prettys (Lam b)    = showString "λ " . showParen True (prettys b)
+  prettys (Pi t b)   = showString "π " . prettys t . showString " . " . prettys b
 
 newtype Scope a = Scope (Type a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
