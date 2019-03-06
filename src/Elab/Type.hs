@@ -70,3 +70,9 @@ instance Monad Type where
   a >>= f = substIn (const (\case
     Free a' -> f a'
     Bound i -> Bound i :$ mempty)) a
+
+identityT :: Type Name
+identityT = pi (Local (Root "x") ::: Type) (pi (Local (Root "y") ::: pure (Local (Root "x"))) (pure (Local (Root "y"))))
+
+identity :: Type Name
+identity = lam (Local (Root "x")) (lam (Local (Root "y")) (pure (Local (Root "y"))))
