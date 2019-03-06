@@ -2,8 +2,9 @@
 module Elab.Type where
 
 import Control.Monad (ap)
-import Data.Foldable (foldl')
+import Data.Foldable (foldl', toList)
 import Elab.Name
+import Elab.Pretty
 import Elab.Stack
 import Prelude hiding (pi)
 
@@ -14,8 +15,18 @@ data Type a
   | Head a :$ Stack (Type a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
+instance Pretty a => Pretty (Type a) where
+  prettys (h :$ Nil) = prettys h
+  prettys (h :$ sp)  = prettys h . showChar ' ' . prettys (toList sp)
+  prettys Type       = showString "Type"
+  prettys (Lam b)    = showString "λ" . prettys b
+  prettys (Pi t b)   = showString "π" . prettys t . showString " -> " . prettys b
+
 newtype Scope a = Scope (Type a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+instance Pretty a => Pretty (Scope a) where
+  prettys (Scope a) = prettys a
 
 
 lam :: Eq a => a -> Type a -> Type a
