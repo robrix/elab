@@ -108,9 +108,9 @@ infixr 1 :|-:
 
 type HetConstraint = Contextual (Equation (Value Meta ::: Type Meta))
 type HomConstraint = Contextual (Equation (Value Meta) ::: Type Meta)
-type Blocked = Map.Map Gensym (Set.Set HetConstraint)
+type Blocked = Map.Map Gensym (Set.Set HomConstraint)
 type Substitution = Map.Map Gensym (Value Meta)
-type Queue = Seq.Seq HetConstraint
+type Queue = Seq.Seq HomConstraint
 
 data Solution
   = Gensym := Value Meta
@@ -125,10 +125,10 @@ runElab ty m = run . runFail . runFresh . runReader (Root "elab") $ do
     val <- exists ty'
     m' <- m
     m' <$ unify (m' :===: val)
-  subst <- solver constraints
+  subst <- solver (foldMap hetToHom constraints)
   substTyped subst res
 
-solver :: (Carrier sig m, Effect sig, Member Fresh sig, Member (Reader Gensym) sig, MonadFail m) => Set.Set HetConstraint -> m Substitution
+solver :: (Carrier sig m, Effect sig, Member Fresh sig, Member (Reader Gensym) sig, MonadFail m) => Set.Set HomConstraint -> m Substitution
 solver constraints = execState Map.empty $ do
   queue <- execState (Seq.empty :: Queue) $ do
     stuck <- fmap fold . execState (Map.empty :: Blocked) $ do
@@ -142,26 +142,24 @@ step = do
   _S <- get
   dequeue >>= maybe (pure ()) (process _S >=> const step)
 
-process :: (Carrier sig m, Effect sig, Member Fresh sig, Member (Reader Gensym) sig, Member (State Blocked) sig, Member (State Queue) sig, Member (State Substitution) sig, MonadFail m) => Substitution -> HetConstraint -> m ()
-process _S c@(_ :|-: tm1 ::: ty1 :===: tm2 ::: ty2)
+process :: (Carrier sig m, Effect sig, Member Fresh sig, Member (Reader Gensym) sig, Member (State Blocked) sig, Member (State Queue) sig, Member (State Substitution) sig, MonadFail m) => Substitution -> HomConstraint -> m ()
+process _S c@(_ :|-: (tm1 :===: tm2) ::: ty)
   | s <- Map.restrictKeys _S (metaNames (fvs c)), not (null s) = simplify (applyConstraint s c) >>= enqueueAll
-  | Just (m, sp) <- pattern ty1 = solve (m := Type.lams sp ty2) >> get >>= \ _S -> process _S c
-  | Just (m, sp) <- pattern ty2 = solve (m := Type.lams sp ty1) >> get >>= \ _S -> process _S c
   | Just (m, sp) <- pattern tm1 = solve (m := Type.lams sp tm2) >> get >>= \ _S -> process _S c
   | Just (m, sp) <- pattern tm2 = solve (m := Type.lams sp tm1) >> get >>= \ _S -> process _S c
   | otherwise = block c
 
-block :: (Carrier sig m, Member (State Blocked) sig, MonadFail m) => HetConstraint -> m ()
+block :: (Carrier sig m, Member (State Blocked) sig, MonadFail m) => HomConstraint -> m ()
 block c = do
   let s = Set.singleton c
       mvars = metaNames (fvs c)
   when (null mvars) $ fail ("cannot block constraint without metavars: " ++ show c)
   modify (Map.unionWith (<>) (foldl' (\ m i -> Map.insertWith (<>) i s m) mempty mvars))
 
-enqueueAll :: (Carrier sig m, Member (State Queue) sig, Foldable t) => t HetConstraint -> m ()
+enqueueAll :: (Carrier sig m, Member (State Queue) sig, Foldable t) => t HomConstraint -> m ()
 enqueueAll = modify . flip (foldl' (Seq.|>))
 
-dequeue :: (Carrier sig m, Member (State Queue) sig) => m (Maybe HetConstraint)
+dequeue :: (Carrier sig m, Member (State Queue) sig) => m (Maybe HomConstraint)
 dequeue = gets Seq.viewl >>= \case
   Seq.EmptyL -> pure Nothing
   h Seq.:< q -> Just h <$ put q
@@ -181,8 +179,8 @@ solve (m := v) = do
   enqueueAll cs
   modify (Map.delete m :: Blocked -> Blocked)
 
-applyConstraint :: Substitution -> HetConstraint -> HetConstraint
-applyConstraint subst (ctx :|-: tm1 ::: ty1 :===: tm2 ::: ty2) = applyContext subst ctx :|-: applyType subst tm1 ::: applyType subst ty1 :===: applyType subst tm2 ::: applyType subst ty2
+applyConstraint :: Substitution -> HomConstraint -> HomConstraint
+applyConstraint subst (ctx :|-: (tm1 :===: tm2) ::: ty) = applyContext subst ctx :|-: (applyType subst tm1 :===: applyType subst tm2) ::: applyType subst ty
 
 applyContext :: Substitution -> Context (Type Meta) -> Context (Type Meta)
 applyContext = fmap . applyType
@@ -200,8 +198,8 @@ substTy subst = fmap (fmap join) . traverse $ \case
   Name n -> pure (pure n)
   Meta m -> maybe (fail ("unsolved metavariable " ++ show m)) (substTy subst) (Map.lookup m subst)
 
-fvs :: HetConstraint -> Set.Set Meta
-fvs (ctx :|-: tm1 ::: ty1 :===: tm2 ::: ty2) = foldMap go ctx <> go tm1 <> go ty1 <> go tm2 <> go ty2
+fvs :: HomConstraint -> Set.Set Meta
+fvs (ctx :|-: (tm1 :===: tm2) ::: ty) = foldMap go ctx <> go tm1 <> go tm2 <> go ty
   where go = foldMap Set.singleton
 
 metaNames :: Set.Set Meta -> Set.Set Gensym
@@ -215,27 +213,25 @@ simplify :: ( Carrier sig m
             , Member (Reader Gensym) sig
             , MonadFail m
             )
-         => HetConstraint
-         -> m (Set.Set HetConstraint)
+         => HomConstraint
+         -> m (Set.Set HomConstraint)
 simplify (ctx :|-: c) = execWriter (go c)
   where go = \case
-          tm1 ::: ty1 :===: tm2 ::: ty2 | tm1 == tm2, ty1 == ty2 -> pure ()
-          Pi t1 b1 ::: Type :===: Pi t2 b2 ::: Type -> do
-            go (t1 ::: Type :===: t2 ::: Type)
+          (tm1 :===: tm2) ::: _ | tm1 == tm2 -> pure ()
+          (Pi t1 b1 :===: Pi t2 b2) ::: Type -> do
+            go ((t1 :===: t2) ::: Type)
             n <- Name . Local <$> gensym "simplify"
-            go (Type.instantiate (pure n) b1 ::: Type :===: Type.instantiate (pure n) b2 ::: Type)
-          Lam f1 ::: Pi t1 b1 :===: Lam f2 ::: Pi t2 b2 -> do
-            go (Pi t1 b1 ::: Type :===: Pi t2 b2 ::: Type)
+            go ((Type.instantiate (pure n) b1 :===: Type.instantiate (pure n) b2) ::: Type)
+          (Lam f1 :===: Lam f2) ::: Pi t b -> do
             n <- Name . Local <$> gensym "simplify"
             -- FIXME: this should probably extend the context while simplifying the body
-            go (Type.instantiate (pure n) f1 ::: Type.instantiate (pure n) b1 :===: Type.instantiate (pure n) f2 ::: Type.instantiate (pure n) b2)
-          c@(t1 :===: t2)
+            go ((Type.instantiate (pure n) f1 :===: Type.instantiate (pure n) f2) ::: Type.instantiate (pure n) b)
+          c@((t1 :===: t2) ::: _)
             | stuck t1 || stuck t2 -> tell (Set.singleton (ctx :|-: c))
             | otherwise            -> fail ("unsimplifiable constraint: " ++ show c)
 
-        stuck (v ::: ty) = stuckType v || stuckType ty
-        stuckType (Free (Meta _) :$ _) = True
-        stuckType _                    = False
+        stuck (Free (Meta _) :$ _) = True
+        stuck _                    = False
 
 hetToHom :: HetConstraint -> Set.Set HomConstraint
 hetToHom (ctx :|-: tm1 ::: ty1 :===: tm2 ::: ty2) = Set.fromList
