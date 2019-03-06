@@ -146,8 +146,8 @@ process :: (Carrier sig m, Effect sig, Member Fresh sig, Member (Reader Gensym) 
 process _S c@(_ :|-: (tm1 :===: tm2) ::: ty)
   | tm1 == tm2 = pure ()
   | s <- Map.restrictKeys _S (metaNames (fvs c)), not (null s) = simplify (applyConstraint s c) >>= enqueueAll
-  | Just (m, sp) <- pattern tm1 = solve (m := Type.lams sp tm2) >> get >>= \ _S -> process _S c
-  | Just (m, sp) <- pattern tm2 = solve (m := Type.lams sp tm1) >> get >>= \ _S -> process _S c
+  | Just (m, sp) <- pattern tm1 = solve (m := Type.lams sp tm2)
+  | Just (m, sp) <- pattern tm2 = solve (m := Type.lams sp tm1)
   | otherwise = block c
 
 block :: (Carrier sig m, Member (State Blocked) sig, MonadFail m) => HomConstraint -> m ()
