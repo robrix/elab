@@ -102,6 +102,10 @@ data Equation a
 
 infix 3 :===:
 
+instance Pretty a => Pretty (Equation a) where
+  prettys (a1 :===: a2) = prettys a1 . showString " ≡ " . prettys a2
+
+
 data Contextual a = Context (Type Meta) :|-: a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
