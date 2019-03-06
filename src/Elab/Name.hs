@@ -11,6 +11,10 @@ data Head a
   | Bound Int
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
+instance Pretty a => Pretty (Head a) where
+  prettys (Free a) = prettys a
+  prettys (Bound i) = shows i
+
 
 data Name
   = Global String
