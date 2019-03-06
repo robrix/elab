@@ -29,6 +29,10 @@ data Gensym
   | Gensym :/ (String, Int)
   deriving (Eq, Ord, Show)
 
+instance Pretty Gensym where
+  prettys (Root s) = showString s
+  prettys (root :/ (leaf, i)) = prettys root . showChar '.' . showString leaf . shows i
+
 infixl 6 :/
 
 (//) :: Gensym -> String -> Gensym
