@@ -143,7 +143,7 @@ step = do
   dequeue >>= maybe (pure ()) (process _S >=> const step)
 
 process :: (Carrier sig m, Effect sig, Member Fresh sig, Member (Reader Gensym) sig, Member (State Blocked) sig, Member (State Queue) sig, Member (State Substitution) sig, MonadFail m) => Substitution -> HomConstraint -> m ()
-process _S c@(_ :|-: (tm1 :===: tm2) ::: ty)
+process _S c@(_ :|-: (tm1 :===: tm2) ::: _)
   | tm1 == tm2 = pure ()
   | s <- Map.restrictKeys _S (metaNames (fvs c)), not (null s) = simplify (applyConstraint s c) >>= enqueueAll
   | Just (m, sp) <- pattern tm1 = solve (m := Type.lams sp tm2)
@@ -218,7 +218,7 @@ simplify :: ( Carrier sig m
          -> m (Set.Set HomConstraint)
 simplify = execWriter . go
   where go = \case
-          ctx :|-: (tm1 :===: tm2) ::: _ | tm1 == tm2 -> pure ()
+          _ :|-: (tm1 :===: tm2) ::: _ | tm1 == tm2 -> pure ()
           ctx :|-: (Pi t1 b1 :===: Pi t2 b2) ::: Type -> do
             go (ctx :|-: (t1 :===: t2) ::: Type)
             n <- Local <$> gensym "simplify"
@@ -231,7 +231,7 @@ simplify = execWriter . go
             go (ctx :|-: (tm1 Type.$$* sp :===: tm2) ::: ty)
           ctx :|-: (tm1 :===: Free (Name n) :$ sp) ::: ty | Just tm2 <- Map.lookup n ctx -> do
             go (ctx :|-: (tm1 :===: tm2 Type.$$* sp) ::: ty)
-          c@(ctx :|-: (t1 :===: t2) ::: _)
+          c@(_ :|-: (t1 :===: t2) ::: _)
             | stuck t1 || stuck t2 -> tell (Set.singleton c)
             | otherwise            -> fail ("unsimplifiable constraint: " ++ show c)
 
