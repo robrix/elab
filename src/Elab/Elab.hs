@@ -222,6 +222,7 @@ simplify (ctx :|-: c) = execWriter (go c)
           (Pi t1 b1 :===: Pi t2 b2) ::: Type -> do
             go ((t1 :===: t2) ::: Type)
             n <- Name . Local <$> gensym "simplify"
+            -- FIXME: this should probably extend the context while simplifying the body
             go ((Type.instantiate (pure n) b1 :===: Type.instantiate (pure n) b2) ::: Type)
           (Lam f1 :===: Lam f2) ::: Pi t b -> do
             n <- Name . Local <$> gensym "simplify"
