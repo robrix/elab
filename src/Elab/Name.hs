@@ -4,6 +4,7 @@ module Elab.Name where
 import Control.Effect
 import Control.Effect.Fresh
 import Control.Effect.Reader
+import Elab.Pretty
 
 data Head a
   = Free a
@@ -43,3 +44,6 @@ data a ::: b = a ::: b
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 infix 6 :::
+
+instance (Pretty a, Pretty b) => Pretty (a ::: b) where
+  prettys (a ::: b) = prettys a . showString " : " . prettys b
