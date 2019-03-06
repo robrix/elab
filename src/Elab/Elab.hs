@@ -221,13 +221,12 @@ simplify = execWriter . go
           ctx :|-: (tm1 :===: tm2) ::: _ | tm1 == tm2 -> pure ()
           ctx :|-: (Pi t1 b1 :===: Pi t2 b2) ::: Type -> do
             go (ctx :|-: (t1 :===: t2) ::: Type)
-            n <- Name . Local <$> gensym "simplify"
-            -- FIXME: this should probably extend the context while simplifying the body
-            go (ctx :|-: (Type.instantiate (pure n) b1 :===: Type.instantiate (pure n) b2) ::: Type)
+            n <- Local <$> gensym "simplify"
+            -- FIXME: this should insert some sort of dependency
+            go (Map.insert n t1 ctx :|-: (Type.instantiate (pure (Name n)) b1 :===: Type.instantiate (pure (Name n)) b2) ::: Type)
           ctx :|-: (Lam f1 :===: Lam f2) ::: Pi t b -> do
-            n <- Name . Local <$> gensym "simplify"
-            -- FIXME: this should probably extend the context while simplifying the body
-            go (ctx :|-: (Type.instantiate (pure n) f1 :===: Type.instantiate (pure n) f2) ::: Type.instantiate (pure n) b)
+            n <- Local <$> gensym "simplify"
+            go (Map.insert n t ctx :|-: (Type.instantiate (pure (Name n)) f1 :===: Type.instantiate (pure (Name n)) f2) ::: Type.instantiate (pure (Name n)) b)
           ctx :|-: (Free (Name n) :$ sp :===: tm2) ::: ty | Just tm1 <- Map.lookup n ctx -> do
             go (ctx :|-: (tm1 Type.$$* sp :===: tm2) ::: ty)
           ctx :|-: (tm1 :===: Free (Name n) :$ sp) ::: ty | Just tm2 <- Map.lookup n ctx -> do
