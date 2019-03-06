@@ -107,6 +107,10 @@ data Contextual a = Context (Type Meta) :|-: a
 
 infixr 1 :|-:
 
+instance Pretty a => Pretty (Contextual a) where
+  prettys (ctx :|-: a) = showString "Γ " . prettys ctx . showString " ⊢ " . prettys a
+
+
 type HetConstraint = Contextual (Equation (Value Meta ::: Type Meta))
 type HomConstraint = Contextual (Equation (Value Meta) ::: Type Meta)
 type Blocked = Map.Map Gensym (Set.Set HomConstraint)
