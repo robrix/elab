@@ -27,6 +27,10 @@ data Meta
   | Meta Gensym
   deriving (Eq, Ord, Show)
 
+instance Pretty Meta where
+  prettys (Name n) = prettys n
+  prettys (Meta g) = showChar '@' . prettys g
+
 
 data Gensym
   = Root String
