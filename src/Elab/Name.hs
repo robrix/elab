@@ -3,7 +3,7 @@ module Elab.Name where
 
 import Control.Effect
 import Control.Effect.Fresh
-import Control.Effect.Reader
+import Control.Effect.Reader hiding (Local)
 import Elab.Pretty
 
 data Head a
@@ -16,6 +16,10 @@ data Name
   = Global String
   | Local  Gensym
   deriving (Eq, Ord, Show)
+
+instance Pretty Name where
+  prettys (Global s) = showChar '$' . showString s
+  prettys (Local n)  = showChar '_' . prettys n
 
 
 data Meta
