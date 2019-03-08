@@ -242,10 +242,6 @@ simplify = execWriter . go
           ctx :|-: (Lam f1 :===: Lam f2) ::: Pi t b -> do
             n <- Local <$> gensym "simplify"
             go (Map.insert n t ctx :|-: (Type.instantiate (pure (Name n)) f1 :===: Type.instantiate (pure (Name n)) f2) ::: Type.instantiate (pure (Name n)) b)
-          ctx :|-: (Free (Name n) :$ sp :===: tm2) ::: ty | Just tm1 <- Map.lookup n ctx -> do
-            go (ctx :|-: (tm1 Type.$$* sp :===: tm2) ::: ty)
-          ctx :|-: (tm1 :===: Free (Name n) :$ sp) ::: ty | Just tm2 <- Map.lookup n ctx -> do
-            go (ctx :|-: (tm1 :===: tm2 Type.$$* sp) ::: ty)
           c@(_ :|-: (t1 :===: t2) ::: _)
             | stuck t1 || stuck t2 -> tell (Set.singleton c)
             | otherwise            -> fail ("unsimplifiable constraint: " ++ pretty c)
