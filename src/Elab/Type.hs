@@ -83,7 +83,7 @@ instance Monad Type where
     Bound i -> Bound i :$ mempty)) a
 
 identityT :: Type Name
-identityT = pi (Local (Root "x") ::: Type) (pi (Local (Root "y") ::: pure (Local (Root "x"))) (pure (Local (Root "y"))))
+identityT = pi (Local (Root "x") ::: Type) (pi (Local (Root "y") ::: pure (Local (Root "x"))) (pure (Local (Root "x"))))
 
 identity :: Type Name
 identity = lam (Local (Root "x")) (lam (Local (Root "y")) (pure (Local (Root "y"))))
