@@ -6,7 +6,7 @@ import Elab.Name
 import Prelude hiding (pi)
 
 data Term a
-  = Head (Head a)
+  = Var (Head a)
   | Lam (Scope a)
   | Term a :$ Term a
   | Type
@@ -31,21 +31,21 @@ pis names body = foldr pi body names
 
 -- | Bind occurrences of a 'Name' in a 'Term' term, producing a 'Scope' in which the 'Name' is bound.
 bind :: Eq a => a -> Term a -> Scope a
-bind name = Scope . substIn (\ i v -> Head $ case v of
+bind name = Scope . substIn (\ i v -> Var $ case v of
   Bound j -> Bound j
   Free  n -> if name == n then Bound i else Free n)
 
 -- | Substitute a 'Term' term for the free variable in a given 'Scope', producing a closed 'Term' term.
 instantiate :: Term a -> Scope a -> Term a
 instantiate image (Scope b) = substIn (\ i v -> case v of
-  Bound j -> if i == j then image else Head (Bound j)
+  Bound j -> if i == j then image else Var (Bound j)
   Free  n -> pure n) b
 
 substIn :: (Int -> Head a -> Term b)
         -> Term a
         -> Term b
 substIn var = go 0
-  where go i (Head h)         = var i h
+  where go i (Var h)          = var i h
         go i (Lam (Scope b))  = Lam (Scope (go (succ i) b))
         go i (f :$ a)         = go i f :$ go i a
         go _ Type             = Type
@@ -53,13 +53,13 @@ substIn var = go 0
 
 
 instance Applicative Term where
-  pure = Head . Free
+  pure = Var . Free
   (<*>) = ap
 
 instance Monad Term where
   a >>= f = substIn (const (\case
     Free a' -> f a'
-    Bound i -> Head (Bound i))) a
+    Bound i -> Var (Bound i))) a
 
 
 identityT :: Term Name
