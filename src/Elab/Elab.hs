@@ -243,12 +243,20 @@ simplify = execWriter . go
               n <- Local <$> gensym "simplify"
               -- FIXME: this should insert some sort of dependency
               go (Map.insert n t1 ctx :|-: (Type.instantiate (pure (Name n)) b1 :===: Type.instantiate (pure (Name n)) b2) ::: Type)
+          ctx :|-: (Pi Im t1 b1 :===: tm2) ::: Type -> do
+            n <- exists t1
+            go (ctx :|-: (Type.instantiate n b1 :===: tm2) ::: Type)
+          ctx :|-: (tm1 :===: Pi Im t2 b2) ::: Type -> do
+            n <- exists t2
+            go (ctx :|-: (tm1 :===: Type.instantiate n b2) ::: Type)
           ctx :|-: (Lam f1 :===: Lam f2) ::: Pi _ t b -> do
             n <- Local <$> gensym "simplify"
             go (Map.insert n t ctx :|-: (Type.instantiate (pure (Name n)) f1 :===: Type.instantiate (pure (Name n)) f2) ::: Type.instantiate (pure (Name n)) b)
           c@(_ :|-: (t1 :===: t2) ::: _)
             | stuck t1 || stuck t2 -> tell (Set.singleton c)
             | otherwise            -> fail ("unsimplifiable constraint: " ++ pretty c)
+
+        exists _ = pure . Meta <$> gensym "_meta_"
 
         stuck (Meta _ :$ _) = True
         stuck _             = False
