@@ -1,6 +1,9 @@
 {-# LANGUAGE DeriveTraversable #-}
 module Elab.Stack where
 
+import Data.Foldable (toList)
+import Elab.Pretty
+
 data Stack a = Nil | Stack a :> a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
@@ -14,3 +17,6 @@ instance Semigroup (Stack a) where
 instance Monoid (Stack a) where
   mempty = Nil
   mappend = (<>)
+
+instance Pretty a => Pretty (Stack a) where
+  prettys = prettys . toList
