@@ -63,3 +63,7 @@ infix 6 :::
 
 instance (Pretty a, Pretty b) => Pretty (a ::: b) where
   prettys (a ::: b) = prettys a . showString " : " . prettys b
+
+
+data Incr a = Z | S a
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
