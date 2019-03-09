@@ -67,3 +67,7 @@ instance (Pretty a, Pretty b) => Pretty (a ::: b) where
 
 data Incr a = Z | S a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+instance Pretty a => Pretty (Incr a) where
+  prettys Z = showChar 'Z'
+  prettys (S a) = showString "S " . prettys a
