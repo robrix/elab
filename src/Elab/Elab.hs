@@ -7,7 +7,7 @@ import Control.Effect.Fresh
 import Control.Effect.Reader hiding (Local)
 import Control.Effect.State
 import Control.Effect.Writer
-import Control.Monad ((>=>), join, unless, when)
+import Control.Monad ((>=>), guard, join, unless, when)
 import Data.Foldable (fold, foldl')
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
@@ -181,12 +181,15 @@ dequeue = gets Seq.viewl >>= \case
   h Seq.:< q -> Just h <$ put q
 
 pattern :: Type Meta -> Maybe (Gensym, Stack Meta)
-pattern (Free (Meta m) :$ sp) = (,) m <$> traverse free sp
+pattern (Free (Meta m) :$ sp) = (,) m <$> (traverse free sp >>= distinct)
 pattern _                     = Nothing
 
 free :: Type a -> Maybe a
 free (Free v :$ Nil) = Just v
 free _               = Nothing
+
+distinct :: (Foldable t, Ord a) => t a -> Maybe (t a)
+distinct sp = sp <$ guard (length (foldMap Set.singleton sp) == length sp)
 
 solve :: (Carrier sig m, Member (State Blocked) sig, Member (State Queue) sig, Member (State Substitution) sig) => Solution -> m ()
 solve (m := v) = do
