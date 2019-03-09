@@ -39,24 +39,24 @@ intro body = do
   x <- freshName "intro"
   _B ::: _ <- x ::: _A |- exists Type
   u ::: _ <- x ::: _A |- goalIs _B (body x)
-  expect (Type.lam (Name x) u ::: Type.pi (Name x ::: _A) _B)
+  expect (Type.lam (Name x) u ::: Type.pi (Name x ::: (Ex, _A)) _B)
 
 type' :: Elab (Value Meta ::: Type Meta)
 type' = expect (Type ::: Type)
 
-pi :: Plicity (Elab (Value Meta ::: Type Meta)) -> (Name -> Elab (Value Meta ::: Type Meta)) -> Elab (Value Meta ::: Type Meta)
-pi t body = do
-  t' ::: _ <- case t of { Im t -> goalIs Type t ; Ex t -> goalIs Type t }
+pi :: Plicity -> Elab (Value Meta ::: Type Meta) -> (Name -> Elab (Value Meta ::: Type Meta)) -> Elab (Value Meta ::: Type Meta)
+pi p t body = do
+  t' ::: _ <- goalIs Type t
   x <- freshName "pi"
   b' ::: _ <- x ::: t' |- goalIs Type (body x)
-  expect (Type.pi (Name x ::: t') b' ::: Type)
+  expect (Type.pi (Name x ::: (p, t')) b' ::: Type)
 
 ($$) :: Elab (Value Meta ::: Type Meta) -> Elab (Value Meta ::: Type Meta) -> Elab (Value Meta ::: Type Meta)
 f $$ a = do
   _A ::: _ <- exists Type
   _B ::: _ <- exists Type
   x <- freshName "$$"
-  f' ::: _ <- goalIs (Type.pi (Name x ::: _A) _B) f
+  f' ::: _ <- goalIs (Type.pi (Name x ::: (Ex, _A)) _B) f
   a' ::: _ <- goalIs _A a
   expect (f' Type.$$ a' ::: _B)
 
@@ -237,12 +237,12 @@ simplify :: ( Carrier sig m
 simplify = execWriter . go
   where go = \case
           _ :|-: (tm1 :===: tm2) ::: _ | tm1 == tm2 -> pure ()
-          ctx :|-: (Pi t1 b1 :===: Pi t2 b2) ::: Type -> do
+          ctx :|-: (Pi _ t1 b1 :===: Pi _ t2 b2) ::: Type -> do
             go (ctx :|-: (t1 :===: t2) ::: Type)
             n <- Local <$> gensym "simplify"
             -- FIXME: this should insert some sort of dependency
             go (Map.insert n t1 ctx :|-: (Type.instantiate (pure (Name n)) b1 :===: Type.instantiate (pure (Name n)) b2) ::: Type)
-          ctx :|-: (Lam f1 :===: Lam f2) ::: Pi t b -> do
+          ctx :|-: (Lam f1 :===: Lam f2) ::: Pi _ t b -> do
             n <- Local <$> gensym "simplify"
             go (Map.insert n t ctx :|-: (Type.instantiate (pure (Name n)) f1 :===: Type.instantiate (pure (Name n)) f2) ::: Type.instantiate (pure (Name n)) b)
           c@(_ :|-: (t1 :===: t2) ::: _)
