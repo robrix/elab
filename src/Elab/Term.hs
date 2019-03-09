@@ -3,6 +3,7 @@ module Elab.Term where
 
 import Control.Monad (ap)
 import Elab.Name
+import Elab.Plicity
 import Prelude hiding (pi)
 
 data Term a
@@ -10,7 +11,7 @@ data Term a
   | Lam (Scope a)
   | Term a :$ Term a
   | Type
-  | Pi (Term a) (Scope a)
+  | Pi (Plicity (Term a)) (Scope a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 newtype Scope a = Scope (Term (Incr a))
@@ -22,10 +23,10 @@ lam n b = Lam (Scope (match n <$> b))
 lams :: (Eq a, Foldable t) => t a -> Term a -> Term a
 lams names body = foldr lam body names
 
-pi :: Eq a => a ::: Term a -> Term a -> Term a
+pi :: Eq a => a ::: Plicity (Term a) -> Term a -> Term a
 pi (n ::: t) b = Pi t (Scope (match n <$> b))
 
-pis :: (Eq a, Foldable t) => t (a ::: Term a) -> Term a -> Term a
+pis :: (Eq a, Foldable t) => t (a ::: Plicity (Term a)) -> Term a -> Term a
 pis names body = foldr pi body names
 
 
@@ -34,7 +35,7 @@ gfoldT :: forall m n b
        -> (forall a . n (Incr a) -> n a)
        -> (forall a . n a -> n a -> n a)
        -> (forall a . n a)
-       -> (forall a . n a -> n (Incr a) -> n a)
+       -> (forall a . Plicity (n a) -> n (Incr a) -> n a)
        -> (forall a . Incr (m a) -> m (Incr a))
        -> Term (m b)
        -> n b
@@ -45,7 +46,7 @@ gfoldT var lam app ty pi dist = go
           Lam (Scope b) -> lam (go (dist <$> b))
           f :$ a -> app (go f) (go a)
           Type -> ty
-          Pi t (Scope b) -> pi (go t) (go (dist <$> b))
+          Pi t (Scope b) -> pi (fmap go t) (go (dist <$> b))
 
 joinT :: Term (Term a) -> Term a
 joinT = gfoldT id (Lam . Scope) (:$) Type (\ t -> Pi t . Scope) distT
@@ -73,7 +74,7 @@ instance Monad Term where
 
 
 identityT :: Term Name
-identityT = pi (Local (Root "x") ::: Type) (pi (Local (Root "y") ::: pure (Local (Root "x"))) (pure (Local (Root "x"))))
+identityT = pi (Local (Root "x") ::: Im Type) (pi (Local (Root "y") ::: Ex (pure (Local (Root "x")))) (pure (Local (Root "x"))))
 
 identity :: Term Name
 identity = lam (Local (Root "x")) (lam (Local (Root "y")) (pure (Local (Root "y"))))
