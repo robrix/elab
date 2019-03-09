@@ -16,9 +16,6 @@ data Term a
 newtype Scope a = Scope (Term a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-free :: a -> Term a
-free = Head . Free
-
 lam :: Eq a => a -> Term a -> Term a
 lam n b = Lam (bind n b)
 
