@@ -14,6 +14,7 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Sequence as Seq
 import qualified Data.Set as Set
 import Elab.Name
+import Elab.Plicity
 import Elab.Pretty
 import Elab.Stack
 import Elab.Type (Type(..))
@@ -43,9 +44,9 @@ intro body = do
 type' :: Elab (Value Meta ::: Type Meta)
 type' = expect (Type ::: Type)
 
-pi :: Elab (Value Meta ::: Type Meta) -> (Name -> Elab (Value Meta ::: Type Meta)) -> Elab (Value Meta ::: Type Meta)
+pi :: Plicity (Elab (Value Meta ::: Type Meta)) -> (Name -> Elab (Value Meta ::: Type Meta)) -> Elab (Value Meta ::: Type Meta)
 pi t body = do
-  t' ::: _ <- goalIs Type t
+  t' ::: _ <- case t of { Im t -> goalIs Type t ; Ex t -> goalIs Type t }
   x <- freshName "pi"
   b' ::: _ <- x ::: t' |- goalIs Type (body x)
   expect (Type.pi (Name x ::: t') b' ::: Type)
