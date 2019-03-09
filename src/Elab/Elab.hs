@@ -180,12 +180,12 @@ dequeue = gets Seq.viewl >>= \case
   h Seq.:< q -> Just h <$ put q
 
 pattern :: Type Meta -> Maybe (Gensym, Stack Meta)
-pattern (Free (Meta m) :$ sp) = (,) m <$> (traverse free sp >>= distinct)
-pattern _                     = Nothing
+pattern (Meta m :$ sp) = (,) m <$> (traverse free sp >>= distinct)
+pattern _              = Nothing
 
 free :: Type a -> Maybe a
-free (Free v :$ Nil) = Just v
-free _               = Nothing
+free (v :$ Nil) = Just v
+free _          = Nothing
 
 distinct :: (Foldable t, Ord a) => t a -> Maybe (t a)
 distinct sp = sp <$ guard (length (foldMap Set.singleton sp) == length sp)
@@ -248,8 +248,8 @@ simplify = execWriter . go
             | stuck t1 || stuck t2 -> tell (Set.singleton c)
             | otherwise            -> fail ("unsimplifiable constraint: " ++ pretty c)
 
-        stuck (Free (Meta _) :$ _) = True
-        stuck _                    = False
+        stuck (Meta _ :$ _) = True
+        stuck _             = False
 
 hetToHom :: HetConstraint -> Set.Set HomConstraint
 hetToHom (ctx :|-: tm1 ::: ty1 :===: tm2 ::: ty2) = Set.fromList
