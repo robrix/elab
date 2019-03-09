@@ -12,6 +12,9 @@ class Pretty a where
 pretty :: Pretty a => a -> String
 pretty = ($ "") . prettys
 
+prettyPrint :: Pretty a => a -> IO ()
+prettyPrint = putStrLn . pretty
+
 instance Pretty a => Pretty [a] where
   prettys = showListWith prettys
 
