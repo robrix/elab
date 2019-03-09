@@ -29,41 +29,35 @@ newtype Elab a = Elab { unElab :: ReaderC (Type Meta) (ReaderC (Context (Type Me
 
 assume :: Name -> Elab (Value Meta ::: Type Meta)
 assume v = do
-  res <- goal >>= exists
   _A <- Elab (lookupVar v)
-  res <$ unify (pure (Name v) ::: _A :===: res)
+  expect (pure (Name v) ::: _A)
 
 intro :: (Name -> Elab (Value Meta ::: Type Meta)) -> Elab (Value Meta ::: Type Meta)
 intro body = do
-  res <- goal >>= exists
   _A ::: _ <- exists Type
   x <- freshName "intro"
   _B ::: _ <- x ::: _A |- exists Type
   u ::: _ <- x ::: _A |- goalIs _B (body x)
-  res <$ unify (Type.lam (Name x) u ::: Type.pi (Name x ::: _A) _B :===: res)
+  expect (Type.lam (Name x) u ::: Type.pi (Name x ::: _A) _B)
 
 type' :: Elab (Value Meta ::: Type Meta)
-type' = do
-  res <- goal >>= exists
-  res <$ unify (Type ::: Type :===: res)
+type' = expect (Type ::: Type)
 
 pi :: Elab (Value Meta ::: Type Meta) -> (Name -> Elab (Value Meta ::: Type Meta)) -> Elab (Value Meta ::: Type Meta)
 pi t body = do
-  res <- goal >>= exists
   t' ::: _ <- goalIs Type t
   x <- freshName "pi"
   b' ::: _ <- x ::: t' |- goalIs Type (body x)
-  res <$ unify (Type.pi (Name x ::: t') b' ::: Type :===: res)
+  expect (Type.pi (Name x ::: t') b' ::: Type)
 
 ($$) :: Elab (Value Meta ::: Type Meta) -> Elab (Value Meta ::: Type Meta) -> Elab (Value Meta ::: Type Meta)
 f $$ a = do
-  res <- goal >>= exists
   _A ::: _ <- exists Type
   _B ::: _ <- exists Type
   x <- freshName "$$"
   f' ::: _ <- goalIs (Type.pi (Name x ::: _A) _B) f
   a' ::: _ <- goalIs _A a
-  res <$ unify (f' Type.$$ a' ::: _B :===: res)
+  expect (f' Type.$$ a' ::: _B)
 
 
 expect :: Value Meta ::: Type Meta -> Elab (Value Meta ::: Type Meta)
