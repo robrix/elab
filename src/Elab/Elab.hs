@@ -66,6 +66,11 @@ f $$ a = do
   res <$ unify (f' Type.$$ a' ::: _B :===: res)
 
 
+expect :: Value Meta ::: Type Meta -> Elab (Value Meta ::: Type Meta)
+expect exp = do
+  res <- goal >>= exists
+  res <$ unify (exp :===: res)
+
 freshName :: String -> Elab Name
 freshName s = Local <$> Elab (gensym s)
 
